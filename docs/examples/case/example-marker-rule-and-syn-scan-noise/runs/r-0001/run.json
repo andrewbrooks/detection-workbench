@@ -1,0 +1,32 @@
+{
+  "argv": [],
+  "backend": "native",
+  "config": null,
+  "duration_s": 0.0,
+  "engine": "dpkt",
+  "engine_version": null,
+  "error_excerpt": "",
+  "exit_code": 0,
+  "finished": "2026-10-22T22:16:12.588530Z",
+  "id": "r-0001",
+  "inputs": [
+    {
+      "evidence_id": "e-0001",
+      "mount": "pcap",
+      "sha256": "e4abeab3ce82ae01f19c8dd3dc7b36a2cd9a7a416b0c4d7463227acb51595dbb"
+    }
+  ],
+  "kind": "summary",
+  "parent_run": null,
+  "results": {
+    "summary": "results/summary.json"
+  },
+  "rules": null,
+  "schema_version": 1,
+  "started": "2026-10-22T22:16:12.588530Z",
+  "status": "ok",
+  "timed_out": false,
+  "totals": {
+    "packets": 13
+  }
+}

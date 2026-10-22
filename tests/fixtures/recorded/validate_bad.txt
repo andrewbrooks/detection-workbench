@@ -1,0 +1,70 @@
+--------------------------------------------------
+o")~   Snort++ 3.10.0.0
+--------------------------------------------------
+Loading /work/validate.lua:
+Loading /home/snorty/snort3/etc/snort/snort_defaults.lua:
+Finished /home/snorty/snort3/etc/snort/snort_defaults.lua:
+	trace
+	output
+	active
+	daq
+	decode
+	host_tracker
+	search_engine
+	alert_json
+	ips
+	wizard
+	ssh
+	ssl
+	dns
+	http_inspect
+	stream_tcp
+	stream_udp
+	stream_ip
+	stream
+	so_proxy
+	hosts
+	host_cache
+	alerts
+	network
+	packets
+	process
+Finished /work/validate.lua:
+Loading rule args:
+Loading /fix/rules/bad.rules:
+Finished /fix/rules/bad.rules:
+Finished rule args:
+--------------------------------------------------
+ips policies rule stats
+              id  loaded  shared enabled    file
+               0       4       1       4    /work/validate.lua
+--------------------------------------------------
+rule counts
+       total rules loaded: 4
+   total rules not loaded: 1
+          duplicate rules: 1
+               text rules: 4
+            option chains: 4
+            chain headers: 2
+--------------------------------------------------
+port rule counts
+             tcp     udp    icmp      ip
+     any       4       0       0       0
+   total       4       0       0       0
+--------------------------------------------------
+fast pattern groups
+                      any: 2
+--------------------------------------------------
+search engine (ac_bnfa)
+--------------------------------------------------
+pcap DAQ configured to passive.
+ERROR: /fix/rules/bad.rules:2 unknown rule keyword: contnet.
+ERROR: /fix/rules/bad.rules:3 syntax error
+ERROR: /fix/rules/bad.rules:3 unknown rule action ':"abc";'
+ERROR: /fix/rules/bad.rules:4 syntax error
+ERROR: /fix/rules/bad.rules:4 unknown rule action '->'
+WARNING: /fix/rules/bad.rules:6 1:1000010 duplicates previous rule. Using revision 1.
+ERROR: /fix/rules/bad.rules:7 'depth' must be in 3:65535, inclusive
+WARNING: port rule 1:1000011:1 has no fast pattern
+FATAL: see prior 6 errors (2 warnings)
+Fatal Error, Quitting..

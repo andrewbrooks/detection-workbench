@@ -1,0 +1,80 @@
+{
+  "argv": [
+    "docker",
+    "run",
+    "--rm",
+    "--name",
+    "dw-example-marker-rule-and-syn-scan-noise-r-0002",
+    "--network",
+    "none",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--pids-limit",
+    "256",
+    "--memory",
+    "2g",
+    "--read-only",
+    "--tmpfs",
+    "/tmp",
+    "-e",
+    "HOME=/tmp",
+    "--user",
+    "1000:1000",
+    "-v",
+    "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/runs/r-0002/cfg:/cfg:ro",
+    "-v",
+    "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/runs/r-0002/out:/out",
+    "--entrypoint",
+    "/home/snorty/snort3/bin/snort",
+    "ciscotalos/snort3@sha256:f15f714fd61ade114b1039687dd43352cae26cd6401b89f2b03404e0d21e322f",
+    "-c",
+    "/cfg/validate.lua",
+    "-R",
+    "/cfg/rules.rules",
+    "-T",
+    "--warn-all"
+  ],
+  "backend": "docker",
+  "config": {
+    "options": {},
+    "path": "cfg/validate.lua",
+    "sha256": "ae0a7c49f6eb61faf87c161f605cfdeb6abbd7cf869d8d9b689ce42b1aa32439"
+  },
+  "docker_image": "ciscotalos/snort3@sha256:f15f714fd61ade114b1039687dd43352cae26cd6401b89f2b03404e0d21e322f",
+  "duration_s": 0.315,
+  "engine": "snort",
+  "engine_version": "3.10.0.0",
+  "error_excerpt": "",
+  "exit_code": 0,
+  "extra_argv": [],
+  "finished": "2026-10-22T22:16:12.910841Z",
+  "id": "r-0002",
+  "inputs": [
+    {
+      "evidence_id": "e-0002",
+      "mount": "cfg/rules.rules",
+      "sha256": "2870dd02f3d1bf2e934bf2ab8c180345981417e9e2ac078abfd6b3983e0f6f7f"
+    }
+  ],
+  "kind": "validate",
+  "parent_run": null,
+  "results": {
+    "summary": "results/summary.json"
+  },
+  "rules": {
+    "evidence_id": "e-0002",
+    "path": "cfg/rules.rules",
+    "sha256": "2870dd02f3d1bf2e934bf2ab8c180345981417e9e2ac078abfd6b3983e0f6f7f",
+    "source": "evidence"
+  },
+  "schema_version": 1,
+  "started": "2026-10-22T22:16:12.594807Z",
+  "status": "ok",
+  "timed_out": false,
+  "totals": {
+    "errors": 0,
+    "warnings": 1
+  }
+}

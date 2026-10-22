@@ -1,0 +1,3 @@
+alert http any any -> any any ( msg:"WBTEST marker in URI"; http_uri; content:"WBTEST-MARKER",fast_pattern; sid:1000001; rev:1; classtype:trojan-activity; )
+alert udp any any -> any 53 ( msg:"WBTEST any DNS"; content:"|01 00 00 01|",offset 2,depth 4; sid:1000002; rev:1; )
+alert tcp any any -> any any ( msg:"WBTEST any SYN"; flags:S; sid:1000003; rev:1; )

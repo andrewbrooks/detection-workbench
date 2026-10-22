@@ -1,0 +1,119 @@
+{
+  "argv": [
+    "docker",
+    "run",
+    "--rm",
+    "--name",
+    "dw-example-marker-rule-and-syn-scan-noise-r-0003",
+    "--network",
+    "none",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--pids-limit",
+    "256",
+    "--memory",
+    "2g",
+    "--read-only",
+    "--tmpfs",
+    "/tmp",
+    "-e",
+    "HOME=/tmp",
+    "--user",
+    "1000:1000",
+    "-v",
+    "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/runs/r-0003/cfg:/cfg:ro",
+    "-v",
+    "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/runs/r-0003/out:/out",
+    "-v",
+    "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/runs/r-0003/input-w6lqrkv6/capture.pcap:/in/0/capture.pcap:ro",
+    "--entrypoint",
+    "/home/snorty/snort3/bin/snort",
+    "ciscotalos/snort3@sha256:f15f714fd61ade114b1039687dd43352cae26cd6401b89f2b03404e0d21e322f",
+    "-q",
+    "-c",
+    "/cfg/snort.lua",
+    "-R",
+    "/cfg/rules.rules",
+    "-r",
+    "/in/0/capture.pcap",
+    "--daq",
+    "pcap",
+    "--daq-mode",
+    "read-file",
+    "-A",
+    "alert_json",
+    "-l",
+    "/out",
+    "-z",
+    "1"
+  ],
+  "backend": "docker",
+  "config": {
+    "options": {
+      "external_net": null,
+      "filters": [],
+      "flush_one_sided": false,
+      "home_net": null,
+      "profile": false
+    },
+    "path": "cfg/snort.lua",
+    "sha256": "c77694e47a3a319391012ad179d72a7371f77b5013e39b2630a542aa2645fdc6"
+  },
+  "docker_image": "ciscotalos/snort3@sha256:f15f714fd61ade114b1039687dd43352cae26cd6401b89f2b03404e0d21e322f",
+  "duration_s": 0.314,
+  "engine": "snort",
+  "engine_version": "3.10.0.0",
+  "error_excerpt": "",
+  "exit_code": 0,
+  "extra_argv": [],
+  "finished": "2026-10-22T22:16:13.235739Z",
+  "id": "r-0003",
+  "inputs": [
+    {
+      "evidence_id": "e-0001",
+      "mount": "pcap",
+      "sha256": "e4abeab3ce82ae01f19c8dd3dc7b36a2cd9a7a416b0c4d7463227acb51595dbb"
+    },
+    {
+      "evidence_id": "e-0002",
+      "mount": "cfg/rules.rules",
+      "sha256": "2870dd02f3d1bf2e934bf2ab8c180345981417e9e2ac078abfd6b3983e0f6f7f"
+    }
+  ],
+  "kind": "run",
+  "parent_run": null,
+  "results": {
+    "alerts": "results/alerts.jsonl",
+    "summary": "results/summary.json"
+  },
+  "rules": {
+    "evidence_id": "e-0002",
+    "path": "cfg/rules.rules",
+    "sha256": "2870dd02f3d1bf2e934bf2ab8c180345981417e9e2ac078abfd6b3983e0f6f7f",
+    "source": "evidence"
+  },
+  "schema_version": 1,
+  "started": "2026-10-22T22:16:12.920109Z",
+  "status": "ok",
+  "timed_out": false,
+  "totals": {
+    "alerts": 9,
+    "by_sid_top": [
+      {
+        "count": 6,
+        "sid": 1000003
+      },
+      {
+        "count": 2,
+        "sid": 1000002
+      },
+      {
+        "count": 1,
+        "sid": 1000001
+      }
+    ],
+    "truncated": false
+  }
+}

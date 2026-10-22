@@ -1,0 +1,25 @@
+--------------------------------------------------
+module profile (all, sorted by total_time)
+#                      module layer               checks             time(us)            avg/check  %/caller  %/total
+=                      ====== =====               ======             ========            =========  ========  =======
+ 1                      other     1                 1910                22115                   11     75.56    75.56
+ 2               http_inspect     1                 6930                 1886                    0      6.45     6.45
+ 3                 stream_tcp     1                 1575                 1791                    1      6.12     6.12
+ 4                     eventq     1                 6025                  954                    0      3.26     3.26
+ 5                       mpse     1                 7651                  781                    0      2.67     2.67
+ 6                  rule_eval     1                 2855                  704                    0      2.41     2.41
+ 7                        paf     1                 1890                  271                    0      0.93     0.93
+ 8                     stream     1                 1910                  253                    0      0.86     0.86
+ 9                     decode     1                 1910                  184                    0      0.63     0.63
+ 10                       daq     1                 1941                  154                    0      0.53     0.53
+ 11                    binder     1                  965                   98                    0      0.34     0.34
+ 12                   ac_bnfa     1                  650                   40                    0      0.14     0.14
+ 13                    wizard     1                  335                   25                    0      0.09     0.09
+ 14                stream_udp     1                   20                    6                    0      0.02     0.02
+--                      total    --                 1910                29269                   15        --   100.00
+--------------------------------------------------
+rule profile (all, sorted by total_time)
+#       gid   sid rev    checks matches alerts time (us) avg/check avg/match avg/non-match timeouts suspends rule_time (%)
+=       ===   === ===    ====== ======= ====== ========= ========= ========= ============= ======== ======== =============
+1         11000042   1       315     315    315       179         0         0             0        0        0       0.58717
+2         11000001   1         1       1      1         1         1         1             0        0        0       0.00328

@@ -1,0 +1,53 @@
+{
+  "packets": 13,
+  "bytes": 901,
+  "non_ip_packets": 0,
+  "first_packet": "2023-11-14T22:13:20.000000Z",
+  "last_packet": "2023-11-14T22:13:20.120000Z",
+  "duration_s": 0.12,
+  "protocols": {
+    "TCP": 11,
+    "UDP": 2
+  },
+  "top_sources": [
+    [
+      "10.0.4.20",
+      11
+    ],
+    [
+      "203.0.113.5",
+      2
+    ]
+  ],
+  "top_conversations": [
+    {
+      "src": "10.0.4.20",
+      "dst": "10.0.9.9",
+      "packets": 5
+    },
+    {
+      "src": "10.0.4.20",
+      "dst": "203.0.113.5",
+      "packets": 4
+    },
+    {
+      "src": "10.0.4.20",
+      "dst": "8.8.8.8",
+      "packets": 2
+    },
+    {
+      "src": "203.0.113.5",
+      "dst": "10.0.4.20",
+      "packets": 2
+    }
+  ],
+  "services": {
+    "http/tcp": 6,
+    "dns/udp": 2,
+    "ftp-data/tcp": 1,
+    "ftp/tcp": 1,
+    "ssh/tcp": 1,
+    "telnet/tcp": 1
+  },
+  "untracked_packets": 0
+}

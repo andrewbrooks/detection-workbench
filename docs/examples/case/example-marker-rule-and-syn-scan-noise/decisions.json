@@ -1,0 +1,36 @@
+{
+  "items": [
+    {
+      "after_run": "r-0004",
+      "before_run": "r-0003",
+      "change": {
+        "count": 1,
+        "kind": "event_filter",
+        "seconds": 60,
+        "sid": 1000003,
+        "track": "by_src",
+        "type": "limit"
+      },
+      "counts": {
+        "1000001": {
+          "after": 1,
+          "before": 1
+        },
+        "1000002": {
+          "after": 2,
+          "before": 2
+        },
+        "1000003": {
+          "after": 1,
+          "before": 6
+        }
+      },
+      "created": "2026-10-22T22:16:13.570978Z",
+      "id": "d-0001",
+      "kind": "event_filter",
+      "reason": "SYN rule fires on every scan packet; volume, not presence, is the noise",
+      "status": "proposed"
+    }
+  ],
+  "schema_version": 1
+}

@@ -1,0 +1,67 @@
+{
+  "total": 9,
+  "truncated": false,
+  "by_sid": [
+    {
+      "gid": 1,
+      "sid": 1000003,
+      "rev": 1,
+      "msg": "WBTEST any SYN",
+      "count": 6,
+      "distinct_sources": 1,
+      "distinct_destinations": 2,
+      "top_source": "10.0.4.20",
+      "top_source_share": 1.0
+    },
+    {
+      "gid": 1,
+      "sid": 1000002,
+      "rev": 1,
+      "msg": "WBTEST any DNS",
+      "count": 2,
+      "distinct_sources": 1,
+      "distinct_destinations": 1,
+      "top_source": "10.0.4.20",
+      "top_source_share": 1.0
+    },
+    {
+      "gid": 1,
+      "sid": 1000001,
+      "rev": 1,
+      "msg": "WBTEST marker in URI",
+      "count": 1,
+      "distinct_sources": 1,
+      "distinct_destinations": 1,
+      "top_source": "10.0.4.20",
+      "top_source_share": 1.0
+    }
+  ],
+  "top_sources": [
+    [
+      "10.0.4.20",
+      9
+    ]
+  ],
+  "top_destinations": [
+    [
+      "10.0.9.9",
+      5
+    ],
+    [
+      "8.8.8.8",
+      2
+    ],
+    [
+      "203.0.113.5",
+      2
+    ]
+  ],
+  "stream_caveats": {
+    "tcp_flows": 6,
+    "unacked_flows": 0,
+    "one_sided_flows": 0,
+    "examples": [],
+    "flows_truncated": false,
+    "explanation": null
+  }
+}

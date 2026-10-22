@@ -1,0 +1,71 @@
+--------------------------------------------------
+o")~   Snort++ 3.10.0.0
+--------------------------------------------------
+Loading /work/validate.lua:
+Loading /home/snorty/snort3/etc/snort/snort_defaults.lua:
+Finished /home/snorty/snort3/etc/snort/snort_defaults.lua:
+	output
+	ips
+	active
+	alerts
+	daq
+	decode
+	host_cache
+	host_tracker
+	hosts
+	network
+	packets
+	process
+	so_proxy
+	stream
+	stream_ip
+	stream_udp
+	stream_tcp
+	http_inspect
+	dns
+	ssl
+	ssh
+	wizard
+	alert_json
+	trace
+	search_engine
+Finished /work/validate.lua:
+Loading rule args:
+Loading /fix/rules/good.rules:
+Finished /fix/rules/good.rules:
+Finished rule args:
+--------------------------------------------------
+ips policies rule stats
+              id  loaded  shared enabled    file
+               0       3       0       3    /work/validate.lua
+--------------------------------------------------
+rule counts
+       total rules loaded: 3
+               text rules: 3
+            option chains: 3
+            chain headers: 3
+--------------------------------------------------
+port rule counts
+             tcp     udp    icmp      ip
+     any       1       0       0       0
+     dst       0       1       0       0
+   total       1       1       0       0
+--------------------------------------------------
+service rule counts          to-srv  to-cli
+                     http:        1       1
+                    http2:        1       1
+                    http3:        1       1
+                    total:        3       3
+--------------------------------------------------
+fast pattern groups
+                      dst: 2
+                to_server: 3
+                to_client: 3
+--------------------------------------------------
+search engine (ac_bnfa)
+--------------------------------------------------
+pcap DAQ configured to passive.
+
+Snort successfully validated the configuration (with 1 warnings).
+o")~   Snort exiting
+WARNING: port rule 1:1000003:1 has no fast pattern
