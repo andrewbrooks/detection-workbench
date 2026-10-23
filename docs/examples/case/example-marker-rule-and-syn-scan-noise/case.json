@@ -1,5 +1,5 @@
 {
-  "created": "2026-10-22T22:16:12.564990Z",
+  "created": "2026-10-23T17:42:02.858666Z",
   "id": "example-marker-rule-and-syn-scan-noise",
   "next_ids": {
     "d": 2,
@@ -13,5 +13,5 @@
   "status": "closed",
   "summary": "**Question.** Does the marker rule fire on the target request, and which rule in this set is noisy?\n\n**Findings.** The marker rule (sid 1000001) fires exactly once, on the request carrying `WBTEST-MARKER-7731` (f-0001, run r-0003). The only noisy rule is the SYN rule (sid 1000003): 6 alerts, all from one scanner (10.0.4.20) sweeping five ports on 10.0.9.9.\n\n**Tested change.** An `event_filter` limit of one alert per source per minute takes sid 1000003 from 6 to 1 alerts and leaves sids 1000001 and 1000002 unchanged (run r-0004, decision d-0001). It is recorded as `proposed`; nobody has accepted it.\n\n**Limits.** One 13-packet synthetic capture. It shows the change works mechanically, not that a limit of one per minute is right for production traffic.",
   "title": "Example: marker rule and SYN-scan noise",
-  "updated": "2026-10-22T22:16:13.588678Z"
+  "updated": "2026-10-23T17:42:03.875897Z"
 }

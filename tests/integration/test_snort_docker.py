@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from detection_workbench.config import Config
-from detection_workbench.runner.runner import RunContext, docker_argv, execute
+from detection_workbench.runner.runner import RunContext, docker_argv, docker_bin, execute
 from detection_workbench.workbench import Workbench, WorkbenchError
 
 FIX = Path(__file__).parents[1] / "fixtures"
@@ -288,3 +288,25 @@ def test_snort2_conf_include_lines_are_not_followed(tmp_path):
     assert out["status"] == "partial"
     assert "SHOULD-NOT-APPEAR" not in out["converted_rules"] and "1000200" not in out["converted_rules"]
     assert "1000201" in out["converted_rules"] and "extra.rules" in out["conversion_notes"]
+
+
+def test_image_starts_snort_as_any_host_user_not_just_the_image_owner(wb):
+    """Regression: the pinned image keeps Snort under a 0700 home owned by uid 1000, so containers run as any other host
+    user (most people) failed with 'permission denied' until the derived image added search permission."""
+    if wb.engine.version().backend != "docker":
+        pytest.skip("docker backend only")
+    image, s = wb.engine._image, wb.cfg.snort
+    assert image and image.startswith("detection-workbench/snort3:")
+    for uid in ("1000:1000", "1001:127", "4242:4242", "65534:65534"):
+        r = subprocess.run([docker_bin(), "run", "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL", "--user", uid,
+                            "--entrypoint", s.docker_binary, image, "-V"], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "Version 3." in r.stdout + r.stderr, (uid, r.stderr[-200:])
+
+
+def test_a_failed_start_is_reported_as_an_error_run_not_as_zero_alerts(wb, monkeypatch):
+    """If the engine cannot start, the run must say so, never present an empty result as 'no alerts'."""
+    r = wb.run_pcap(ev(wb, "pcaps/http_marker.pcap"), rules_id=ev(wb, "rules/good.rules"))
+    assert r["status"] == "ok"
+    monkeypatch.setattr(wb.engine, "_image", "detection-workbench/snort3:does-not-exist")
+    bad = wb.run_pcap(ev(wb, "pcaps/http_marker.pcap"), rules_id=ev(wb, "rules/good.rules"))
+    assert bad["status"] == "error" and bad["error_excerpt"] and "total_alerts" not in bad

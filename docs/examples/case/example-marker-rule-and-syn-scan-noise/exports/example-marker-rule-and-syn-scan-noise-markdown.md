@@ -1,6 +1,6 @@
 # Example: marker rule and SYN-scan noise
 
-Case `example-marker-rule-and-syn-scan-noise` · status **closed** · created 2026-10-22T22:16:12.564990Z · updated 2026-10-22T22:16:13.583256Z
+Case `example-marker-rule-and-syn-scan-noise` · status **closed** · created 2026-10-23T17:42:02.858666Z · updated 2026-10-23T17:42:03.870582Z
 
 > **At a glance:** 2 engine runs · 2 findings (1 confirmed, 1 open) · 1 decision (1 proposed) · noisiest SID: 1000003 (6 alerts in r-0003)
 
@@ -91,23 +91,23 @@ Change: `{"count": 1, "kind": "event_filter", "seconds": 60, "sid": 1000003, "tr
 
 | time (UTC) | event | ref | detail |
 |---|---|---|---|
-| 2026-10-22T22:16:12.575283Z | case.created | example-marker-rule-and-syn-scan-noise | Example: marker rule and SYN-scan noise |
-| 2026-10-22T22:16:12.577592Z | evidence.registered | e-0001 | <repo>/tests/fixtures/pcaps/http_marker.pcap |
-| 2026-10-22T22:16:12.581767Z | evidence.registered | e-0002 | <repo>/tests/fixtures/rules/good.rules |
-| 2026-10-22T22:16:12.590384Z | run.recorded | r-0001 | summary → ok |
-| 2026-10-22T22:16:12.914998Z | run.recorded | r-0002 | validate → ok |
-| 2026-10-22T22:16:13.238122Z | run.recorded | r-0003 | run → ok |
-| 2026-10-22T22:16:13.240302Z | finding.added | f-0001 | SID 1000001 (marker in URI) fires once, on the target request: data in packet 6, alert re… |
-| 2026-10-22T22:16:13.244037Z | finding.updated | f-0001 | status confirmed |
-| 2026-10-22T22:16:13.568384Z | run.recorded | r-0004 | tuning → ok |
-| 2026-10-22T22:16:13.571008Z | decision.recorded | d-0001 | event_filter |
-| 2026-10-22T22:16:13.575478Z | finding.added | f-0002 | SID 1000003 fires 6 times from one scanner; a limit of one alert per source per minute le… |
-| 2026-10-22T22:16:13.579552Z | note.added | n-0001 |  |
-| 2026-10-22T22:16:13.583215Z | case.updated | example-marker-rule-and-syn-scan-noise | status=closed, summary_chars=759 |
+| 2026-10-23T17:42:02.868331Z | case.created | example-marker-rule-and-syn-scan-noise | Example: marker rule and SYN-scan noise |
+| 2026-10-23T17:42:02.870460Z | evidence.registered | e-0001 | <repo>/tests/fixtures/pcaps/http_marker.pcap |
+| 2026-10-23T17:42:02.874388Z | evidence.registered | e-0002 | <repo>/tests/fixtures/rules/good.rules |
+| 2026-10-23T17:42:02.882532Z | run.recorded | r-0001 | summary → ok |
+| 2026-10-23T17:42:03.205002Z | run.recorded | r-0002 | validate → ok |
+| 2026-10-23T17:42:03.527301Z | run.recorded | r-0003 | run → ok |
+| 2026-10-23T17:42:03.529626Z | finding.added | f-0001 | SID 1000001 (marker in URI) fires once, on the target request: data in packet 6, alert re… |
+| 2026-10-23T17:42:03.533494Z | finding.updated | f-0001 | status confirmed |
+| 2026-10-23T17:42:03.857382Z | run.recorded | r-0004 | tuning → ok |
+| 2026-10-23T17:42:03.859501Z | decision.recorded | d-0001 | event_filter |
+| 2026-10-23T17:42:03.863302Z | finding.added | f-0002 | SID 1000003 fires 6 times from one scanner; a limit of one alert per source per minute le… |
+| 2026-10-23T17:42:03.866915Z | note.added | n-0001 |  |
+| 2026-10-23T17:42:03.870544Z | case.updated | example-marker-rule-and-syn-scan-noise | status=closed, summary_chars=759 |
 
 ## Notes
 
-- (client, 2026-10-22T22:16:13.579520Z) Synthetic capture bundled with the repository; results say nothing about production traffic.
+- (client, 2026-10-23T17:42:03.866886Z) Synthetic capture bundled with the repository; results say nothing about production traffic.
 
 ## Appendix: runs
 

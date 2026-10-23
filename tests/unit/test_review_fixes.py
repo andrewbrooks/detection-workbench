@@ -29,24 +29,35 @@ class Proc:
 SNORT3 = "   ,,_     -*> Snort++ <*-\n  o\"  )~   Version 3.10.0.0\n"
 
 
-def engine(monkeypatch, *, native=None, docker=True, inspect=None, run=None, backend="auto"):
-    """A SnortEngine whose `snort`/`docker` calls are scripted."""
+def engine(monkeypatch, *, native=None, docker=True, inspect=None, run=None, build=None, derived_exists=True,
+           backend="auto"):
+    """A SnortEngine whose `snort`/`docker` calls are scripted. `engine._calls` records every command that was run."""
     monkeypatch.setattr(plugin_mod.shutil, "which", lambda n: ("/usr/bin/" + n) if (
         (n == "snort" and native is not None) or (n == "docker" and docker)) else None)
+    calls = []
 
     def fake_run(argv, **kw):
-        if argv[0].endswith("snort"):
+        calls.append((argv, kw))
+        if Path(argv[0]).name == "snort":
             return Proc(0, native or "")
-        if argv[:3] == ["docker", "image", "inspect"]:
+        if argv[1:3] == ["image", "inspect"]:
+            if argv[3].startswith("detection-workbench/"):  # the derived image
+                return Proc(0) if derived_exists else Proc(1, "", "Error: No such image")
             if isinstance(inspect, Exception):
                 raise inspect
             return inspect or Proc(0)
+        if argv[1] == "build":
+            if isinstance(build, Exception):
+                raise build
+            return build or Proc(0)
         if isinstance(run, Exception):
             raise run
         return run or Proc(0, SNORT3)
 
     monkeypatch.setattr(plugin_mod.subprocess, "run", fake_run)
-    return plugin_mod.SnortEngine(Config(snort=SnortConfig(backend=backend)))
+    e = plugin_mod.SnortEngine(Config(snort=SnortConfig(backend=backend)))
+    e._calls = calls
+    return e
 
 
 def test_native_snort3_is_preferred(monkeypatch):
@@ -76,7 +87,7 @@ def test_missing_image_says_how_to_pull(monkeypatch):
 
 @pytest.mark.parametrize("kwargs,text", [({"inspect": subprocess.TimeoutExpired("docker", 30)}, "did not respond"),
                                          ({"run": subprocess.TimeoutExpired("docker", 60)}, "did not respond"),
-                                         ({"run": Proc(0, "garbage")}, "could not read Snort version")])
+                                         ({"run": Proc(0, "garbage")}, "could not start Snort in the image as your user")])
 def test_docker_hangs_and_garbage_do_not_crash(monkeypatch, kwargs, text):
     v = engine(monkeypatch, **kwargs).version()
     assert not v.available and text in v.detail
@@ -85,25 +96,56 @@ def test_docker_hangs_and_garbage_do_not_crash(monkeypatch, kwargs, text):
 def test_unavailable_engine_is_looked_for_again_but_available_is_cached(monkeypatch):
     clock = {"t": 1000.0}
     monkeypatch.setattr(plugin_mod.time, "monotonic", lambda: clock["t"])
-    state = {"image": False}
-    e = engine(monkeypatch)
-    real = plugin_mod.subprocess.run
-
-    def run(argv, **kw):
-        if argv[:3] == ["docker", "image", "inspect"] and not state["image"]:
-            return Proc(1, "", "No such image")
-        return real(argv, **kw)
-
-    monkeypatch.setattr(plugin_mod.subprocess, "run", run)
+    e = engine(monkeypatch, inspect=Proc(1, "", "No such image"))
     assert not e.version().available
-    state["image"] = True
+    monkeypatch.undo()  # the image is "pulled": replace the scripted world with one where it exists
+    monkeypatch.setattr(plugin_mod.time, "monotonic", lambda: clock["t"])
+    e2 = engine(monkeypatch)
+    e2._version, e2._checked = e._version, e._checked
     clock["t"] += 5
-    assert not e.version().available  # too soon: cached
+    assert not e2.version().available  # too soon: cached
     clock["t"] += plugin_mod.RECHECK_UNAVAILABLE_AFTER_S
-    assert e.version().available and e.version().backend == "docker"
+    assert e2.version().available and e2.version().backend == "docker"
     clock["t"] += 10_000
-    state["image"] = False
-    assert e.version().available  # success is cached for the life of the process
+    assert e2.version().available and sum(1 for c in e2._calls if c[0][1] == "run") == 1  # success is cached
+
+
+# ---- the derived image and running as the host user ------------------------------------------
+def test_probe_runs_as_the_host_user_with_the_lockdown_flags_on_the_derived_image(monkeypatch):
+    import os
+    e = engine(monkeypatch)
+    assert e.version().available
+    argv = next(a for a, _ in e._calls if a[1] == "run")
+    assert argv[argv.index("--user") + 1] == f"{os.getuid()}:{os.getgid()}"
+    assert "--read-only" in argv and argv[argv.index("--cap-drop") + 1] == "ALL" and argv[argv.index("--network") + 1] == "none"
+    image = argv[argv.index("-V") - 1]
+    assert image == e._image and image.startswith("detection-workbench/snort3:")
+    assert e.status()["docker_run_image"] == image
+
+
+def test_derived_image_is_built_when_missing_without_network(monkeypatch):
+    e = engine(monkeypatch, derived_exists=False)
+    assert e.version().available
+    argv, kw = next((a, k) for a, k in e._calls if a[1] == "build")
+    assert argv[argv.index("--network") + 1] == "none" and argv[-1] == "-"
+    assert kw["input"].startswith("FROM ciscotalos/snort3@sha256:") and "chmod o+x /home /home/snorty" in kw["input"]
+
+
+def test_derived_image_is_not_rebuilt_when_present(monkeypatch):
+    e = engine(monkeypatch, derived_exists=True)
+    e.version()
+    assert not any(a[1] == "build" for a, _ in e._calls)
+
+
+def test_image_build_failure_is_explained(monkeypatch):
+    v = engine(monkeypatch, derived_exists=False, build=Proc(1, "", "failed to solve: permission denied\nmore")).version()
+    assert not v.available and "could not prepare the Docker image" in v.detail and "failed to solve" in v.detail
+
+
+def test_snort_that_cannot_start_as_your_user_is_reported_with_the_uid(monkeypatch):
+    import os
+    v = engine(monkeypatch, run=Proc(126, "", "exec: stat /home/snorty/snort3/bin/snort: permission denied")).version()
+    assert not v.available and f"as your user ({os.getuid()}:{os.getgid()})" in v.detail and "permission denied" in v.detail
 
 
 # ---- bounded reads and the validation time budget -----------------------------------------

@@ -25,7 +25,7 @@
           "before": 6
         }
       },
-      "created": "2026-10-22T22:16:13.570978Z",
+      "created": "2026-10-23T17:42:03.859474Z",
       "id": "d-0001",
       "kind": "event_filter",
       "reason": "SYN rule fires on every scan packet; volume, not presence, is the noise",

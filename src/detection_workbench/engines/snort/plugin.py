@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -11,10 +12,11 @@ from pathlib import Path
 
 from ...config import Config
 from ...pcap.flows import analyze_streams
-from ...runner.runner import RawRun, RunContext, docker_argv, excerpt, execute, read_capped
+from ...runner.runner import RawRun, RunContext, docker_argv, docker_bin, excerpt, execute, read_capped
 from ...safety.argv import assert_safe_snort_argv
 from ..base import EngineResult, EngineVersion, register
 from .config_gen import generate_config
+from .image import ensure_image
 from .lint import lint_rules
 from .parse_alerts import parse_alert_file
 from .parse_profile import parse_profile
@@ -43,6 +45,7 @@ class SnortEngine:
         self._backend: str | None = None
         self._version: EngineVersion | None = None
         self._checked = 0.0
+        self._image: str | None = None  # local image derived from the pinned one, once prepared
 
     # ---- backend discovery -------------------------------------------------
     def _native_version(self) -> str | None:
@@ -67,7 +70,7 @@ class SnortEngine:
         if not shutil.which("docker"):
             return None, "docker is not installed"
         try:
-            have = subprocess.run(["docker", "image", "inspect", s.docker_image], capture_output=True, text=True, timeout=30)
+            have = subprocess.run([docker_bin(), "image", "inspect", s.docker_image], capture_output=True, text=True, timeout=30)
         except (OSError, subprocess.TimeoutExpired):
             return None, "docker did not respond within 30 seconds"
         if have.returncode:
@@ -76,12 +79,22 @@ class SnortEngine:
                 return None, f"Docker is installed but not usable: {self._first_line(have.stderr)}"
             return None, f"image not present; run: docker pull {s.docker_image}"
         try:
-            r = subprocess.run(["docker", "run", "--rm", "--network", "none", "--entrypoint", s.docker_binary,
-                                s.docker_image, "-V"], capture_output=True, text=True, timeout=60)
+            self._image = ensure_image(s.docker_image, [s.docker_binary, s.docker_etc])
+        except (RuntimeError, ValueError, OSError, subprocess.TimeoutExpired) as e:
+            return None, f"could not prepare the Docker image: {self._first_line(str(e))}"
+        # Probe the way real runs execute (host uid, read-only, no capabilities), so a permission problem shows up here.
+        user = [] if os.getuid() == 0 else ["--user", f"{os.getuid()}:{os.getgid()}"]
+        try:
+            r = subprocess.run([docker_bin(), "run", "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL", *user,
+                                "--entrypoint", s.docker_binary, self._image, "-V"],
+                               capture_output=True, text=True, timeout=60)
         except (OSError, subprocess.TimeoutExpired):
             return None, "docker did not respond within 60 seconds"
         m = _VERSION.search(r.stdout + r.stderr)
-        return (m.group(1), "") if m else (None, "could not read Snort version from the image")
+        if m:
+            return m.group(1), ""
+        why = self._first_line(r.stderr) or "no output"
+        return None, f"could not start Snort in the image as your user ({os.getuid()}:{os.getgid()}): {why}"
 
     def version(self) -> EngineVersion:
         """Detected once and cached. A failed detection is retried after RECHECK_UNAVAILABLE_AFTER_S, so pulling the
@@ -130,13 +143,15 @@ class SnortEngine:
     def make_context(self, run_dir: Path, run_id: str, case_id: str) -> RunContext:
         backend = self._require()
         name = re.sub(r"[^a-zA-Z0-9_.-]", "-", f"dw-{case_id}-{run_id}")[:100]
-        return RunContext(run_dir=run_dir, backend=backend, cfg=self.cfg, etc_dir=self._etc_dir(backend), name=name)
+        return RunContext(run_dir=run_dir, backend=backend, cfg=self.cfg, etc_dir=self._etc_dir(backend), name=name,
+                          image=(self._image or "") if backend == "docker" else "")
 
     def status(self) -> dict:
         v = self.version()
         out = {"engine": "snort", "available": v.available, "version": v.version, "backend": v.backend,
                "configured_backend": self.cfg.snort.backend, "detail": v.detail,
-               "docker_image": self.cfg.snort.docker_image, "snort2lua": self.has_snort2lua()}
+               "docker_image": self.cfg.snort.docker_image, "docker_run_image": self._image,
+               "snort2lua": self.has_snort2lua()}
         if v.available:
             try:
                 out["config_dir"] = self._etc_dir(v.backend)

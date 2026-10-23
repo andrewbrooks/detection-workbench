@@ -30,6 +30,11 @@ docker pull ciscotalos/snort3@sha256:f15f714fd61ade114b1039687dd43352cae26cd6401
 
 Runs use `--network none --read-only --cap-drop ALL --user <you>` with inputs mounted read-only. The image is Snort 3.10.0.0.
 
+On first use the workbench builds a small local image from it (`detection-workbench/snort3:...`, a few seconds, no network). The
+published image keeps Snort under a home directory that only its own user (uid 1000) can enter, so a container running as your
+user would fail with "permission denied" on any other uid. The derived image adds search permission on those directories and
+nothing else; no capability is added to the container. `get_status` reports the image in use.
+
 **Native.** Install Snort 3 so `snort` is on `PATH` (build from source, or Homebrew on macOS: `brew install snort`; check `snort -V` reports 3.x). Stock config is found at `<prefix>/etc/snort/`, `/usr/local/etc/snort/` or
 `/opt/homebrew/etc/snort/`; override with `[snort].defaults_lua`.
 
@@ -138,6 +143,7 @@ local files you point to.
   skipped lines. Convert each rules file separately.
 - **Snort is silent about a rule with no `sid`.** `validate_rules` adds separate `workbench_lint` findings for this and other hygiene problems.
 - **Validation reports cascade noise**: a missing `;` makes Snort misreport the next rule. The workbench re-checks suspect rules singly.
+- **SELinux.** On hosts that enforce SELinux, Docker bind mounts may need volume labels (`:z`), which the Docker backend does not add.
 - **Evidence text reaches the model.** Packet payloads, rule messages and filenames appear in tool output, so a hostile capture
   can contain text written to look like instructions. The server's instructions tell the model to treat it as data, but that is
   guidance, not enforcement: review what the model proposes, particularly rule changes.

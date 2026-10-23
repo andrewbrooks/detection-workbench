@@ -7,7 +7,7 @@
       "id": "e-0001",
       "label": null,
       "path": "<repo>/tests/fixtures/pcaps/http_marker.pcap",
-      "registered": "2026-10-22T22:16:12.577581Z",
+      "registered": "2026-10-23T17:42:02.870449Z",
       "sha256": "e4abeab3ce82ae01f19c8dd3dc7b36a2cd9a7a416b0c4d7463227acb51595dbb",
       "size": 1133,
       "type": "pcap"
@@ -19,7 +19,7 @@
       "id": "e-0002",
       "label": null,
       "path": "<repo>/tests/fixtures/rules/good.rules",
-      "registered": "2026-10-22T22:16:12.581757Z",
+      "registered": "2026-10-23T17:42:02.874379Z",
       "sha256": "2870dd02f3d1bf2e934bf2ab8c180345981417e9e2ac078abfd6b3983e0f6f7f",
       "size": 357,
       "type": "rules"

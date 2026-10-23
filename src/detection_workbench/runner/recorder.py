@@ -45,7 +45,9 @@ def run_recorded(store: CaseStore, engine: Engine, kind: str, work: Callable[[Ru
         "totals": res.totals, "parent_run": parent_run,
     }
     if ctx.backend == "docker":
-        doc["docker_image"] = ctx.cfg.snort.docker_image
+        doc["docker_image"] = ctx.cfg.snort.docker_image  # the pinned base image
+        if ctx.image and ctx.image != ctx.cfg.snort.docker_image:
+            doc["docker_run_image"] = ctx.image  # the local image derived from it (see engines/snort/image.py)
     store.record_run(doc)
     if failure is not None:
         raise failure

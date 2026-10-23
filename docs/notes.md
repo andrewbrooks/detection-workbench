@@ -84,6 +84,14 @@ From the Timesketch docs and `timesketch/lib/utils.py`:
 - **Repeated `--lua` chunks are concatenated with no separator.** That's one more reason the workbench never uses `--lua`.
 - `--dump-rule-meta` / `--dump-config-text` exist and are useful for tests.
 
+## A12. The image only works for uid 1000
+
+In `ciscotalos/snort3` the install lives under `/home/snorty`, which is mode `0700` owned by uid 1000. The workbench runs containers as the host user (`--user uid:gid`) so that the files they write belong to you; for any uid other than 1000 the container cannot even `stat` the binary: `exec: "/home/snorty/snort3/bin/snort": stat ...: permission denied` (exit 126). Docker Desktop on a machine where your uid is 1000 hides this. It was found by CI, where the runner's uid is 1001, and reproduced locally by running the suite as uid 1001 (`scripts/ci_parity.sh`).
+
+Fix: a local image built `FROM` the pinned digest with `RUN chmod o+x` on the directories leading to the install (`engines/snort/image.py`). The tag embeds the base digest and a hash of the Dockerfile, so it is rebuilt only when either changes. Verified with uids 1000, 1001, 4242 and 65534 under `--read-only --cap-drop ALL`. Granting `CAP_DAC_READ_SEARCH` instead was rejected: that capability enables the `open_by_handle_at` container-escape technique.
+
+The Snort alert file is written with mode `0600`, so containers must run as the host user for the host to read it; running as uid 1000 and fixing ownership afterwards would not work for other users.
+
 ## A11. Build-time findings
 - `mcp` is 2.x (2.3.0): `FastMCP` is now `mcp.server.mcpserver.MCPServer`; client results use snake_case (`is_error`, `structured_content`). `pyproject.toml` requires `mcp>=2`.
 - Recorded real outputs (Docker, 3.10.0.0) live in `tests/fixtures/recorded/`; regenerate with `scripts/record_snort_outputs.py`.

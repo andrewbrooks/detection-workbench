@@ -14,6 +14,7 @@ Never captures live, never inline. Phase 1 (case file, runner, safety, Snort 3) 
 - Tests (no Snort needed):    `uv run pytest -q`
 - Integration (needs Docker): `DW_INTEGRATION=1 uv run pytest -q tests/integration`
 - Run the server (stdio):     `uv run detection-workbench`
+- As a CI runner (uid 1001):  `scripts/ci_parity.sh` or `scripts/ci_parity.sh unit` (Linux, needs Docker)
 - Demo end to end:            `uv run scripts/demo_noisy_rule.py`
 - Regenerate the example case: `uv run scripts/make_example_case.py` (needs Docker/Snort; a unit test checks it stays valid)
 - Regenerate fixtures:        `uv run scripts/make_fixtures.py`, then `uv run scripts/record_snort_outputs.py`

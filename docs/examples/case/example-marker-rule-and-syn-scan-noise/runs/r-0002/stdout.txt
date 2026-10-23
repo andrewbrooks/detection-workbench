@@ -4,16 +4,8 @@ o")~   Snort++ 3.10.0.0
 Loading /cfg/validate.lua:
 Loading /home/snorty/snort3/etc/snort/snort_defaults.lua:
 Finished /home/snorty/snort3/etc/snort/snort_defaults.lua:
-	stream_ip
-	ips
-	ssh
-	trace
-	ssl
-	dns
-	http_inspect
-	stream_tcp
-	stream_udp
-	stream
+	active
+	alerts
 	daq
 	decode
 	host_cache
@@ -21,14 +13,22 @@ Finished /home/snorty/snort3/etc/snort/snort_defaults.lua:
 	hosts
 	network
 	packets
+	process
 	search_engine
 	so_proxy
-	output
+	stream
+	stream_udp
+	stream_tcp
+	http_inspect
+	dns
+	ssl
+	ssh
 	wizard
+	trace
+	ips
 	alert_json
-	alerts
-	process
-	active
+	stream_ip
+	output
 Finished /cfg/validate.lua:
 Loading rule args:
 Loading /cfg/rules.rules:

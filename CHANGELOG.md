@@ -14,6 +14,9 @@ First release: Phase 1 of the plan in [docs/plan.md](docs/plan.md).
 - Case file (schema v1): immutable runs, findings, decisions, notes and an append-only event log.
 - Markdown case report (analyst summary, per-run results, decisions with before/after change, caveats, timeline) and a
   Timesketch-ready CSV export.
+- Docker backend: builds a small local image from the pinned one on first use so containers run as the host user for any uid
+  (the published image only admits uid 1000); the Docker CLI is found on the server's own `PATH`; `get_status` probes the
+  engine the way runs execute.
 - Safety layer: argument lists only, typed Lua escaping, offline-only argument gate, path checks on the open file,
   evidence verified by hash while it is copied for each run, `include` directives refused, resource limits.
 - Stream caveats: `run_pcap` reports flows whose data Snort 3.10 cannot inspect because the peer never ACKed it.

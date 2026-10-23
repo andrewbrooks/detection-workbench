@@ -20,6 +20,10 @@ uv run scripts/demo_noisy_rule.py                      # the whole loop through 
 
 More commands, the code layout and current status are in [docs/development.md](docs/development.md).
 
+**Test as a different user.** Anything involving Docker can pass on your machine and fail in CI, because the Snort image only
+admits uid 1000 and your uid may be 1000. `scripts/ci_parity.sh` (Linux) runs the integration tests, or `unit`, as uid 1001
+against your Docker daemon, the way a CI runner does; run it before changing anything in `runner/` or `engines/snort/`.
+
 ## Before you open a pull request
 
 1. **Add tests.** Every behaviour change needs a test. Safety-relevant changes need a test that fails on the old code
