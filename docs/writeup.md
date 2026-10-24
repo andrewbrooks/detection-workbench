@@ -1,7 +1,5 @@
 # Evidence-backed detection engineering
 
-Most answers about what an IDS rule does are guesses made to sound confident. The Detection Workbench makes a different deal: **the model reasons, Snort answers, and a case file remembers.**
-
 **On this page:** [The idea](#the-idea) · [How it works](#how-it-works) · [Walkthrough](#walkthrough-a-noisy-rule) · [Use cases](#use-cases) · [Output examples](#what-the-output-looks-like) · [Example output](#example-output) · [What "proved" means](#what-proved-means-here) · [Findings along the way](#things-found-along-the-way) · [Limits and next steps](#limits-and-whats-next)
 
 ## The idea
