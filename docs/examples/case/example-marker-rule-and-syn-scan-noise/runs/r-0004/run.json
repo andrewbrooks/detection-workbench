@@ -27,7 +27,7 @@
     "-v",
     "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/runs/r-0004/out:/out",
     "-v",
-    "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/runs/r-0004/input-g40vj67c/capture.pcap:/in/0/capture.pcap:ro",
+    "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/runs/r-0004/input-bj6piloy/capture.pcap:/in/0/capture.pcap:ro",
     "--entrypoint",
     "/home/snorty/snort3/bin/snort",
     "detection-workbench/snort3:f15f714fd61a-1d2fe7a6",
@@ -78,7 +78,7 @@
   "error_excerpt": "",
   "exit_code": 0,
   "extra_argv": [],
-  "finished": "2026-10-23T17:42:03.855101Z",
+  "finished": "2026-10-26T21:43:42.230366Z",
   "id": "r-0004",
   "inputs": [
     {
@@ -100,7 +100,7 @@
     "source": "derived"
   },
   "schema_version": 1,
-  "started": "2026-10-23T17:42:03.539600Z",
+  "started": "2026-10-26T21:43:41.914991Z",
   "status": "ok",
   "timed_out": false,
   "totals": {

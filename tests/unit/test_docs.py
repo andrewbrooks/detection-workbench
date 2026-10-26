@@ -39,3 +39,12 @@ def test_every_doc_is_checked():
     on_disk = {p for p in [ROOT / "README.md", ROOT / "CONTRIBUTING.md", ROOT / "SECURITY.md", *(ROOT / "docs").rglob("*.md"), *(ROOT / "tests/fixtures").glob("*.md")]
                if "examples/case" not in str(p)}
     assert on_disk == set(DOCS)
+
+
+def test_every_json_block_in_the_writeup_is_valid_json():
+    import json
+    text = (ROOT / "docs" / "writeup.md").read_text()
+    blocks = re.findall(r"```json\n(.*?)\n```", text, re.S)
+    assert len(blocks) >= 6
+    for b in blocks:
+        json.loads(b)

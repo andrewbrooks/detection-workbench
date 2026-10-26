@@ -16,6 +16,7 @@ from .case.model import EVIDENCE_TYPES, now
 from .case.store import CaseError, CaseStore
 from .config import Config
 from .engines.base import EngineResult
+from .engines.snort import changes as tuning_changes
 from .engines.snort.config_gen import FILTER_TYPES, TuningError, render_filter
 from .engines.snort.explain import explain_alert as _explain
 from .engines.snort.plugin import SnortEngine, make_engine
@@ -400,12 +401,66 @@ class Workbench:
         collateral = [sid for sid, c in full.items() if sid != target_sid and c["before"] != c["after"]]
         counts, omitted = self._trim_counts(full, target_sid)
         decision = store.add_decision(kind, change, reason, before_run_id, rid, counts, counts_omitted=omitted)
+        if kind == "rule_edit":
+            old_rule = find_rule(rules_text, 1, change["sid"])
+            d = tuning_changes.rule_diff(old_rule.text if old_rule else None, change["rule"])
+            review = {"kind": "rule_edit", "diff": d["lines"], "checks": d["checks"]}
+        else:
+            review = {"kind": kind, "config_entry": tuning_changes.filter_snippet(change)}
         return {"applied": True, "decision_id": decision["id"], "before_run": before_run_id, "after_run": rid,
                 "counts": counts, "counts_omitted": omitted, "total": {"before": b_sum["total"], "after": a_sum["total"]},
-                "other_sids_changed": collateral[:MAX_SID_ROWS], "other_sids_changed_total": len(collateral),
+                "review": review, "other_sids_changed": collateral[:MAX_SID_ROWS], "other_sids_changed_total": len(collateral),
                 "note": "Check that the alerts you want to keep (use get_alerts on the after run) still fire. "
-                        "The decision is recorded as 'proposed'.",
+                        "The decision is recorded as 'proposed'; only the analyst accepts or rejects it (update_decision).",
                 "stream_caveats": a_sum["stream_caveats"]}
+
+    def update_decision(self, decision_id: str, status: str) -> dict:
+        """Record the analyst's decision on a tested change: accepted, rejected, or back to proposed."""
+        d = self._wrap(self._case().update_decision, decision_id, status)
+        return {"decision_id": d["id"], "kind": d["kind"], "status": d["status"], "history": d.get("history", []),
+                "next": "export_tuning gives the rule or config text to apply" if d["status"] == "accepted" else None}
+
+    def export_tuning(self, decision_ids: list[str] | None = None, path_prefix: str | None = None, overwrite: bool = False,
+                      include_unaccepted: bool = False) -> dict:
+        """Accepted tuning changes as text to apply: a rules fragment and a config snippet (optionally written to files)."""
+        store = self._case()
+        every = store.summary()["decisions"]
+        if decision_ids:
+            by_id = {d["id"]: d for d in every}
+            missing = [i for i in decision_ids if i not in by_id]
+            if missing:
+                raise WorkbenchError(f"unknown decision(s): {', '.join(missing)}")
+            chosen = [by_id[i] for i in decision_ids]
+            pending = [d["id"] for d in chosen if d["status"] != "accepted"]
+            if pending and not include_unaccepted:
+                raise WorkbenchError(f"{', '.join(pending)} not accepted yet. Accept with update_decision once the analyst agrees, "
+                                     "or pass include_unaccepted=true to preview.")
+        else:
+            chosen = [d for d in every if d["status"] == "accepted"]
+            if not chosen:
+                raise WorkbenchError("No accepted decisions to export. Accept one with update_decision after the analyst agrees.")
+        built = tuning_changes.build_export(chosen)
+        written = []
+        if path_prefix:
+            protected = {Path(e["path"]).resolve() for e in store.summary()["evidence"]}
+            parts = [(".rules", built["rules"]), (".lua", built["config"])]
+            targets = [(self._wrap(resolve_write, f"{path_prefix}{ext}", self.roots, overwrite, protected), text)
+                       for ext, text in parts if text]
+            for target, text in targets:  # every path is vetted before the first file is written
+                try:
+                    write_text_safely(target, text, overwrite)
+                except FileExistsError:
+                    raise WorkbenchError(f"{target} appeared while writing; nothing further was written") from None
+                except PathError as e:
+                    raise WorkbenchError(str(e)) from None
+                written.append(str(target))
+            store.log_event("export.written", Path(written[0]).name if written else "tuning", {"format": "tuning", "paths": written})
+        unaccepted = [d["id"] for d in chosen if d["status"] != "accepted"]
+        return {"decisions": built["included"], "rules": built["rules"][:50_000], "config": built["config"][:50_000],
+                "written": written, "skipped": built["skipped"],
+                "warning": f"{', '.join(unaccepted)} not accepted yet; this is a preview." if unaccepted else None,
+                "how_to_apply": ["Replace the rules with the same sid in your rules file, then run validate_rules on the result.",
+                                 "Merge each config table into the table of the same name in snort.lua."]}
 
     @staticmethod
     def _trim_counts(full: dict, target_sid: str) -> tuple[dict, int]:

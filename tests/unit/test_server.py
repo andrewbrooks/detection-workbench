@@ -50,7 +50,7 @@ def call(server, name, **args):
 
 EXPECTED = {"create_case", "open_case", "list_cases", "register_evidence", "add_finding", "update_finding", "add_note",
             "update_case", "get_case", "export_case", "get_status", "pcap_summary", "validate_rules", "run_pcap",
-            "get_alerts", "explain_alert", "profile_rules", "suggest_tuning_targets", "test_tuning", "diff_runs",
+            "get_alerts", "explain_alert", "profile_rules", "suggest_tuning_targets", "test_tuning", "update_decision", "export_tuning", "diff_runs",
             "write_rules_file"}
 
 

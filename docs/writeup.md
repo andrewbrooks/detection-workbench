@@ -99,7 +99,39 @@ test_tuning(before_run_id="r-0003",
 
 Suppressing the scanner still leaves 15 noisy hits from the five ordinary clients, because the rule is the problem, not the address. The rewrite removes 314 hits and keeps the real detection. Each `test_tuning` call re-runs the same pcap, so the comparison is like for like, and it records a decision (status *proposed*) with both run ids.
 
-### 6. Write it down
+### 6. The analyst decides
+
+The model proposes; you decide. `test_tuning` records each change as `proposed` and returns a `review` so the change can be read before anyone recommends it. For the rewrite in option B the diff is option by option, because a whole-line diff of two long rules is unreadable:
+
+```diff
+  alert http any any -> any any
+- msg:"LOCAL noisy GET anything"
++ msg:"LOCAL GET to /download"
+  flow:to_server,established
+- http_method
+- content:"GET"
++ http_uri
++ content:"/download/",fast_pattern
+  sid:1000042
+- rev:1
++ rev:2
+  classtype:web-application-activity
+```
+
+> **Rule check:** sid unchanged · rev bumped (1 → 2) · has an explicit fast pattern
+
+The checks catch the common slips: a changed `rev` left unbumped, a changed `sid` (a different rule, not an edit), or a rule with no content to build a fast pattern on. A suppress or event filter is shown as the config entry it adds instead. When you agree with a change, record it and export it:
+
+```text
+update_decision(decision_id="d-0002", status="accepted")
+export_tuning(path_prefix="~/rules/tuning-2026-10")
+  -> tuning-2026-10.rules   the edited rule, to replace the rule with the same sid
+  -> tuning-2026-10.lua     accepted filters as tables to merge into snort.lua (only written if there are any)
+```
+
+Both steps are the analyst's: the instructions tell the model to record a verdict only when told to. Every change of status is kept in the decision's history, and the report shows it. The exported rules file validates with `validate_rules`, and the [integration tests](../tests/integration/test_snort_docker.py) check that it reproduces the alert count the tuning run measured and that the exported config loads in Snort.
+
+### 7. Write it down
 
 ```text
 add_finding("SID 1000042 fires 315 times, 95% from 10.0.4.20; it matches any GET, so it is too broad.", run_ids=["r-0003"])
@@ -217,7 +249,8 @@ Trimmed: `top_sources` and `top_conversations` are cut to three entries each (th
     { "src": "203.0.113.5", "dst": "10.0.4.20", "packets": 600 },
     { "src": "10.0.4.34", "dst": "203.0.113.5", "packets": 16 }
   ],
-  "services": { "http/tcp": 1890, "dns/udp": 20 }
+  "services": { "http/tcp": 1890, "dns/udp": 20 },
+  "untracked_packets": 0
 }
 ```
 
@@ -237,6 +270,7 @@ Trimmed: `top_sources` and `top_conversations` are cut to three entries each (th
   "errors": [],
   "warnings": [],
   "rechecked_individually": [],
+  "recheck_incomplete": false,
   "rules_checked": 3
 }
 ```
@@ -259,21 +293,58 @@ Trimmed: `first_alerts` is cut to one entry (the real response lists up to 200, 
   "total_alerts": 316,
   "truncated_at_parse_limit": false,
   "by_sid": [
-    { "gid": 1, "sid": 1000042, "rev": 1, "msg": "LOCAL noisy GET anything",
-      "count": 315, "distinct_sources": 7, "distinct_destinations": 1 },
-    { "gid": 1, "sid": 1000001, "rev": 1, "msg": "LOCAL WBTEST marker in URI",
-      "count": 1, "distinct_sources": 1, "distinct_destinations": 1 }
+    {
+      "gid": 1,
+      "sid": 1000042,
+      "rev": 1,
+      "msg": "LOCAL noisy GET anything",
+      "count": 315,
+      "distinct_sources": 7,
+      "distinct_destinations": 1
+    },
+    {
+      "gid": 1,
+      "sid": 1000001,
+      "rev": 1,
+      "msg": "LOCAL WBTEST marker in URI",
+      "count": 1,
+      "distinct_sources": 1,
+      "distinct_destinations": 1
+    }
   ],
+  "sids_total": 2,
   "first_alerts": [
-    { "alert_idx": 0, "datetime": "2023-11-14T22:13:20.006000Z", "seconds": 1700000000,
-      "pkt_num": 5, "pkt_gen": "stream_tcp", "proto": "TCP", "dir": "C2S",
-      "src_ip": "10.0.4.20", "src_port": 20001, "dst_ip": "203.0.113.5", "dst_port": 80,
-      "service": "http", "gid": 1, "sid": 1000042, "rev": 1, "msg": "LOCAL noisy GET anything",
-      "class": "none", "priority": 0, "action": "allow" }
+    {
+      "alert_idx": 0,
+      "datetime": "2023-11-14T22:13:20.006000Z",
+      "seconds": 1700000000,
+      "pkt_num": 5,
+      "pkt_gen": "stream_tcp",
+      "proto": "TCP",
+      "dir": "C2S",
+      "src_ip": "10.0.4.20",
+      "src_port": 20001,
+      "dst_ip": "203.0.113.5",
+      "dst_port": 80,
+      "service": "http",
+      "gid": 1,
+      "sid": 1000042,
+      "rev": 1,
+      "msg": "LOCAL noisy GET anything",
+      "class": "none",
+      "priority": 0,
+      "action": "allow"
+    }
   ],
   "first_alerts_note": "first 200 of 316 (use get_alerts to page)",
-  "stream_caveats": { "tcp_flows": 315, "unacked_flows": 0, "one_sided_flows": 0,
-                      "examples": [], "explanation": null }
+  "stream_caveats": {
+    "tcp_flows": 315,
+    "unacked_flows": 0,
+    "one_sided_flows": 0,
+    "examples": [],
+    "flows_truncated": false,
+    "explanation": null
+  }
 }
 ```
 
@@ -291,13 +362,28 @@ Trimmed: `first_alerts` is cut to one entry (the real response lists up to 200, 
   "run_id": "r-0003",
   "total_alerts": 316,
   "targets": [
-    { "gid": 1, "sid": 1000042, "msg": "LOCAL noisy GET anything", "count": 315,
-      "distinct_sources": 7, "distinct_destinations": 1,
-      "top_source": "10.0.4.20", "top_source_share": 0.9524,
-      "observations": ["95% of hits come from 10.0.4.20"] },
-    { "gid": 1, "sid": 1000001, "msg": "LOCAL WBTEST marker in URI", "count": 1,
-      "distinct_sources": 1, "distinct_destinations": 1,
-      "top_source": "10.0.4.77", "top_source_share": 1.0, "observations": [] }
+    {
+      "gid": 1,
+      "sid": 1000042,
+      "msg": "LOCAL noisy GET anything",
+      "count": 315,
+      "distinct_sources": 7,
+      "distinct_destinations": 1,
+      "top_source": "10.0.4.20",
+      "top_source_share": 0.9524,
+      "observations": ["95% of hits come from 10.0.4.20"]
+    },
+    {
+      "gid": 1,
+      "sid": 1000001,
+      "msg": "LOCAL WBTEST marker in URI",
+      "count": 1,
+      "distinct_sources": 1,
+      "distinct_destinations": 1,
+      "top_source": "10.0.4.77",
+      "top_source_share": 1.0,
+      "observations": []
+    }
   ],
   "note": "Ranked by count. One capture is one sample; prove any change with test_tuning."
 }
@@ -314,11 +400,29 @@ This one is for the marker alert on the small `http_marker.pcap` fixture (the wa
 
 ```json
 {
-  "alert": { "alert_idx": 3, "datetime": "2023-11-14T22:13:20.050000Z", "gid": 1, "sid": 1000001,
-             "rev": 1, "msg": "WBTEST marker in URI", "pkt_num": 7, "pkt_gen": "stream_tcp",
-             "action": "allow", "class": "none", "priority": 0 },
-  "packet": { "proto": "TCP", "src": "10.0.4.20:40000", "dst": "203.0.113.5:80", "direction": "C2S",
-              "service": "http", "pkt_gen": "stream_tcp", "trigger_packet": 7, "data_packets": [6] },
+  "alert": {
+    "alert_idx": 3,
+    "datetime": "2023-11-14T22:13:20.050000Z",
+    "gid": 1,
+    "sid": 1000001,
+    "rev": 1,
+    "msg": "WBTEST marker in URI",
+    "pkt_num": 7,
+    "pkt_gen": "stream_tcp",
+    "action": "allow",
+    "class": "none",
+    "priority": 0
+  },
+  "packet": {
+    "proto": "TCP",
+    "src": "10.0.4.20:40000",
+    "dst": "203.0.113.5:80",
+    "direction": "C2S",
+    "service": "http",
+    "pkt_gen": "stream_tcp",
+    "trigger_packet": 7,
+    "data_packets": [6]
+  },
   "rule": {
     "text": "alert http any any -> any any ( msg:\"WBTEST marker in URI\"; http_uri; content:\"WBTEST-MARKER\",fast_pattern; sid:1000001; rev:1; classtype:trojan-activity; )",
     "line": 1,
@@ -334,12 +438,23 @@ This one is for the marker alert on the small `http_marker.pcap` fixture (the wa
   },
   "note": "Snort matched this on reassembled/service data: pkt_num is the packet that triggered the flush (usually the peer's ACK), not necessarily the packet carrying the matched bytes.",
   "contents": [
-    { "option": "content:\"WBTEST-MARKER\"", "buffer": "http_uri", "negated": false, "nocase": false,
-      "fast_pattern": true, "anchors": {},
-      "wire_reassembled": { "found": true, "offsets": [14],
-                            "packets": [{ "stream_offset": 14, "pkt": 6, "payload_offset": 14 }] },
-      "inspector_buffer": { "found": false, "offsets": [] } }
+    {
+      "option": "content:\"WBTEST-MARKER\"",
+      "buffer": "http_uri",
+      "negated": false,
+      "nocase": false,
+      "fast_pattern": true,
+      "anchors": {},
+      "wire_reassembled": {
+        "found": true,
+        "offsets": [14],
+        "packets": [{ "stream_offset": 14, "pkt": 6, "payload_offset": 14 }]
+      },
+      "inspector_buffer": { "found": false, "offsets": [] }
+    }
   ],
+  "pcres": [],
+  "buffer_caveat": "Sticky-buffer offsets are relative to Snort's normalized buffer; a match in the raw stream shows the bytes are present, not that they sit at that offset in the buffer.",
   "payload": {
     "source": "reassembled stream, packets [6]",
     "lines": [
@@ -347,9 +462,10 @@ This one is for the marker alert on the small `http_marker.pcap` fixture (the wa
       "00000010  54 45 53 54 2d 4d 41 52 4b 45 52 2d 37 37 33 31  |TEST-MARKER-7731|",
       "00000020  20 48 54 54 50 2f 31 2e 31 0d 0a 48 6f 73 74 3a  | HTTP/1.1..Host:|"
     ],
-    "shown": 95, "total": 95, "truncated": 0
-  },
-  "buffer_caveat": "Sticky-buffer offsets are relative to Snort's normalized buffer; a match in the raw stream shows the bytes are present, not that they sit at that offset in the buffer."
+    "shown": 95,
+    "total": 95,
+    "truncated": 0
+  }
 }
 ```
 
@@ -368,15 +484,24 @@ Two things worth reading closely. `inspector_buffer.found` is `false` because Sn
   "decision_id": "d-0001",
   "before_run": "r-0003",
   "after_run": "r-0005",
-  "counts": {
-    "1000001": { "before": 1, "after": 1 },
-    "1000042": { "before": 315, "after": 15 }
-  },
+  "counts": { "1000001": { "before": 1, "after": 1 }, "1000042": { "before": 315, "after": 15 } },
+  "counts_omitted": 0,
   "total": { "before": 316, "after": 16 },
+  "review": {
+    "kind": "suppress",
+    "config_entry": "-- add this entry to the suppress table in snort.lua\nsuppress = { { gid = 1, sid = 1000042, track = 'by_src', ip = '10.0.4.20' } }"
+  },
   "other_sids_changed": [],
-  "note": "Check that the alerts you want to keep (use get_alerts on the after run) still fire. The decision is recorded as 'proposed'.",
-  "stream_caveats": { "tcp_flows": 315, "unacked_flows": 0, "one_sided_flows": 0,
-                      "examples": [], "explanation": null }
+  "other_sids_changed_total": 0,
+  "note": "Check that the alerts you want to keep (use get_alerts on the after run) still fire. The decision is recorded as 'proposed'; only the analyst accepts or rejects it (update_decision).",
+  "stream_caveats": {
+    "tcp_flows": 315,
+    "unacked_flows": 0,
+    "one_sided_flows": 0,
+    "examples": [],
+    "flows_truncated": false,
+    "explanation": null
+  }
 }
 ```
 
@@ -394,9 +519,9 @@ This is the report exported for the committed [example case](examples/README.md)
 `````markdown
 # Example: marker rule and SYN-scan noise
 
-Case `example-marker-rule-and-syn-scan-noise` · status **closed** · created 2026-10-23T17:42:02.858666Z · updated 2026-10-23T17:42:03.870582Z
+Case `example-marker-rule-and-syn-scan-noise` · status **closed** · created 2026-10-26T21:43:41.333318Z · updated 2026-10-26T21:43:42.853920Z
 
-> **At a glance:** 2 engine runs · 2 findings (1 confirmed, 1 open) · 1 decision (1 proposed) · noisiest SID: 1000003 (6 alerts in r-0003)
+> **At a glance:** 3 engine runs · 2 findings (1 confirmed, 1 open) · 2 decisions (1 accepted, 1 rejected) · noisiest SID: 1000003 (6 alerts in r-0003)
 
 ## Summary
 
@@ -404,7 +529,9 @@ Case `example-marker-rule-and-syn-scan-noise` · status **closed** · created 20
 
 **Findings.** The marker rule (sid 1000001) fires exactly once, on the request carrying `WBTEST-MARKER-7731` (f-0001, run r-0003). The only noisy rule is the SYN rule (sid 1000003): 6 alerts, all from one scanner (10.0.4.20) sweeping five ports on 10.0.9.9.
 
-**Tested change.** An `event_filter` limit of one alert per source per minute takes sid 1000003 from 6 to 1 alerts and leaves sids 1000001 and 1000002 unchanged (run r-0004, decision d-0001). It is recorded as `proposed`; nobody has accepted it.
+**Two candidate fixes, same result.** An `event_filter` limit of one alert per source per minute (run r-0004, decision d-0001) and a `detection_filter` written into the rule itself (run r-0006, decision d-0002) both take sid 1000003 from 6 to 1 alerts and leave sids 1000001 and 1000002 unchanged.
+
+**Decision.** d-0001 was rejected and d-0002 accepted, because a fix inside the rule travels with the rule set. The accepted rule is in `exports/accepted-tuning.rules`. The rule check notes that sid 1000003 has no content to build a fast pattern on; that was already true before the edit.
 
 **Limits.** One 13-packet synthetic capture. It shows the change works mechanically, not that a limit of one per minute is right for production traffic.
 
@@ -423,6 +550,7 @@ Case `example-marker-rule-and-syn-scan-noise` · status **closed** · created 20
 | origin | sha256 | used in |
 |---|---|---|
 | e-0002 · derived from r-0003 | 2870dd02f3d1bf2e… | r-0002, r-0003, r-0004 |
+| inline · derived from r-0003 | dcb1028fc4858d55… | r-0005, r-0006 |
 
 ## Evidence
 
@@ -460,13 +588,27 @@ Case `example-marker-rule-and-syn-scan-noise` · status **closed** · created 20
 | 1000003 | WBTEST any SYN | 1 | ██░░░░░░░░ | 1 | 10.0.4.20 (100%) |
 | 1000001 | WBTEST marker in URI | 1 | ██░░░░░░░░ | 1 | 10.0.4.20 (100%) |
 
+### r-0005 — validate: ok (0 errors, 1 warning, 1 lint note)
+
+### r-0006 — tuning · parent `r-0003`
+
+4 alerts · status ok
+
+| sid | message | alerts | volume | sources | top source |
+|---|---|---|---|---|---|
+| 1000002 | WBTEST any DNS | 2 | ███░░░░░░░ | 1 | 10.0.4.20 (100%) |
+| 1000001 | WBTEST marker in URI | 1 | ██░░░░░░░░ | 1 | 10.0.4.20 (100%) |
+| 1000003 | WBTEST any SYN | 1 | ██░░░░░░░░ | 1 | 10.0.4.20 (100%) |
+
 ## Decisions
 
-### d-0001 — event_filter (proposed)
+### d-0001 — event_filter (rejected)
 
 SYN rule fires on every scan packet; volume, not presence, is the noise
 
 Before `r-0003` → after `r-0004`
+
+Status history: proposed → rejected (last change 2026-10-26T21:43:42.840288Z)
 
 | sid | before | after | change |
 |---|---|---|---|
@@ -474,43 +616,83 @@ Before `r-0003` → after `r-0004`
 | 1000002 | 2 | 2 | no change |
 | 1000003 | 6 | 1 | −83% |
 
-Change: `{"count": 1, "kind": "event_filter", "seconds": 60, "sid": 1000003, "track": "by_src", "type": "limit"}`
+Config entry:
+
+```lua
+-- add this entry to the event_filter table in snort.lua
+event_filter = { { gid = 1, sid = 1000003, type = 'limit', track = 'by_src', count = 1, seconds = 60 } }
+```
+
+### d-0002 — rule_edit (accepted)
+
+Same effect from inside the rule, so the fix travels with the rule set instead of the sensor config
+
+Before `r-0003` → after `r-0006`
+
+Status history: proposed → accepted (last change 2026-10-26T21:43:42.843889Z)
+
+| sid | before | after | change |
+|---|---|---|---|
+| 1000001 | 1 | 1 | no change |
+| 1000002 | 2 | 2 | no change |
+| 1000003 | 6 | 1 | −83% |
+
+Rule diff (option by option):
+
+```diff
+  alert tcp any any -> any any
+  msg:"WBTEST any SYN"
+  flags:S
++ detection_filter:track by_src,count 5,seconds 60
+  sid:1000003
+- rev:1
++ rev:2
+```
+
+Rule check: sid unchanged · rev bumped (1 → 2) · **warning:** no positive content, so the rule has no fast pattern and is evaluated on every packet in scope
 
 ## Caveats
 
 - Results describe only the evidence registered in this case. One capture is one sample; they do not show how a rule behaves on other traffic.
-- Decisions marked `proposed` have been tested on this evidence but not accepted by a person.
 
 ## Timeline
 
 | time (UTC) | event | ref | detail |
 |---|---|---|---|
-| 2026-10-23T17:42:02.868331Z | case.created | example-marker-rule-and-syn-scan-noise | Example: marker rule and SYN-scan noise |
-| 2026-10-23T17:42:02.870460Z | evidence.registered | e-0001 | <repo>/tests/fixtures/pcaps/http_marker.pcap |
-| 2026-10-23T17:42:02.874388Z | evidence.registered | e-0002 | <repo>/tests/fixtures/rules/good.rules |
-| 2026-10-23T17:42:02.882532Z | run.recorded | r-0001 | summary → ok |
-| 2026-10-23T17:42:03.205002Z | run.recorded | r-0002 | validate → ok |
-| 2026-10-23T17:42:03.527301Z | run.recorded | r-0003 | run → ok |
-| 2026-10-23T17:42:03.529626Z | finding.added | f-0001 | SID 1000001 (marker in URI) fires once, on the target request: data in packet 6, alert re… |
-| 2026-10-23T17:42:03.533494Z | finding.updated | f-0001 | status confirmed |
-| 2026-10-23T17:42:03.857382Z | run.recorded | r-0004 | tuning → ok |
-| 2026-10-23T17:42:03.859501Z | decision.recorded | d-0001 | event_filter |
-| 2026-10-23T17:42:03.863302Z | finding.added | f-0002 | SID 1000003 fires 6 times from one scanner; a limit of one alert per source per minute le… |
-| 2026-10-23T17:42:03.866915Z | note.added | n-0001 |  |
-| 2026-10-23T17:42:03.870544Z | case.updated | example-marker-rule-and-syn-scan-noise | status=closed, summary_chars=759 |
+| 2026-10-26T21:43:41.343602Z | case.created | example-marker-rule-and-syn-scan-noise | Example: marker rule and SYN-scan noise |
+| 2026-10-26T21:43:41.345961Z | evidence.registered | e-0001 | <repo>/tests/fixtures/pcaps/http_marker.pcap |
+| 2026-10-26T21:43:41.350008Z | evidence.registered | e-0002 | <repo>/tests/fixtures/rules/good.rules |
+| 2026-10-26T21:43:41.358619Z | run.recorded | r-0001 | summary → ok |
+| 2026-10-26T21:43:41.630778Z | run.recorded | r-0002 | validate → ok |
+| 2026-10-26T21:43:41.902758Z | run.recorded | r-0003 | run → ok |
+| 2026-10-26T21:43:41.905124Z | finding.added | f-0001 | SID 1000001 (marker in URI) fires once, on the target request: data in packet 6, alert re… |
+| 2026-10-26T21:43:41.909111Z | finding.updated | f-0001 | status confirmed |
+| 2026-10-26T21:43:42.232872Z | run.recorded | r-0004 | tuning → ok |
+| 2026-10-26T21:43:42.234879Z | decision.recorded | d-0001 | event_filter |
+| 2026-10-26T21:43:42.238706Z | finding.added | f-0002 | SID 1000003 fires 6 times from one scanner; a limit of one alert per source per minute le… |
+| 2026-10-26T21:43:42.511660Z | run.recorded | r-0005 | validate → ok |
+| 2026-10-26T21:43:42.833946Z | run.recorded | r-0006 | tuning → ok |
+| 2026-10-26T21:43:42.836425Z | decision.recorded | d-0002 | rule_edit |
+| 2026-10-26T21:43:42.840297Z | decision.updated | d-0001 |  |
+| 2026-10-26T21:43:42.843896Z | decision.updated | d-0002 |  |
+| 2026-10-26T21:43:42.848354Z | export.written | accepted-tuning.rules | tuning →  |
+| 2026-10-26T21:43:42.850404Z | note.added | n-0001 |  |
+| 2026-10-26T21:43:42.853883Z | case.updated | example-marker-rule-and-syn-scan-noise | status=closed, summary_chars=1101 |
 
 ## Notes
 
-- (client, 2026-10-23T17:42:03.866886Z) Synthetic capture bundled with the repository; results say nothing about production traffic.
+- (client, 2026-10-26T21:43:42.850377Z) Synthetic capture bundled with the repository; results say nothing about production traffic.
 
 ## Appendix: runs
 
 | id | kind | engine | version | backend | status | duration_s | alerts |
 |---|---|---|---|---|---|---|---|
 | r-0001 | summary | dpkt |  | native | ok | 0.0 |  |
-| r-0002 | validate | snort | 3.10.0.0 | docker | ok | 0.315 |  |
-| r-0003 | run | snort | 3.10.0.0 | docker | ok | 0.314 | 9 |
+| r-0002 | validate | snort | 3.10.0.0 | docker | ok | 0.264 |  |
+| r-0003 | run | snort | 3.10.0.0 | docker | ok | 0.264 | 9 |
 | r-0004 | tuning | snort | 3.10.0.0 | docker | ok | 0.314 | 4 |
+| r-0005 | validate | snort | 3.10.0.0 | docker | ok | 0.264 |  |
+| r-0006 | tuning | snort | 3.10.0.0 | docker | ok | 0.314 | 4 |
 `````
 
 </details>
@@ -528,7 +710,7 @@ From the [example case](examples/README.md): the header, the first two alert row
 message,datetime,timestamp_desc,timestamp,data_type,case_id,run_id,finding_id,gid,sid,rev,msg,src_ip,src_port,dst_ip,dst_port,proto,pkt_num,pkt_gen,status
 [1:1000002:1] WBTEST any DNS 10.0.4.20:5353 -> 8.8.8.8:53,2023-11-14T22:13:20.000000Z,Snort alert,,snort:alert,example-marker-rule-and-syn-scan-noise,r-0003,,1,1000002,1,WBTEST any DNS,10.0.4.20,5353,8.8.8.8,53,UDP,1,raw,
 [1:1000002:1] WBTEST any DNS 10.0.4.20:5353 -> 8.8.8.8:53,2023-11-14T22:13:20.010000Z,Snort alert,,snort:alert,example-marker-rule-and-syn-scan-noise,r-0003,,1,1000002,1,WBTEST any DNS,10.0.4.20,5353,8.8.8.8,53,UDP,2,raw,
-SID 1000003 fires 6 times from one scanner; a limit of one alert per source per minute leaves 1.,2026-10-23T17:42:03.863272Z,Workbench finding,,workbench:finding,example-marker-rule-and-syn-scan-noise,"r-0003,r-0004",f-0002,,,,,,,,,,,,open
+SID 1000003 fires 6 times from one scanner; a limit of one alert per source per minute leaves 1.,2026-10-26T21:43:42.238678Z,Workbench finding,,workbench:finding,example-marker-rule-and-syn-scan-noise,"r-0003,r-0004",f-0002,,,,,,,,,,,,open
 ```
 
 </details>
@@ -562,7 +744,7 @@ The details, with the exact observations, are in [notes.md](notes.md).
 
 | Phase | Scope | Status |
 |---|---|---|
-| 1 | Case file, engine runner, safety controls, Snort 3 engine, up to 22 tools (`convert_snort2` appears only when `snort2lua` is present) | **Built.** Unit and parser tests run without Snort; integration tests run against Snort 3.10.0.0 in Docker |
+| 1 | Case file, engine runner, safety controls, Snort 3 engine, up to 24 tools (`convert_snort2` appears only when `snort2lua` is present) | **Built.** Unit and parser tests run without Snort; integration tests run against Snort 3.10.0.0 in Docker |
 | 2 | Zeek and tshark on the same capture; pivot from alert to connection to protocol logs to packets | Designed ([plan.md](plan.md), B7) |
 | 3 | Sigma rules run with Zircolite against labelled attack and benign log samples, with regression baselines | Designed ([plan.md](plan.md), B7) |
 

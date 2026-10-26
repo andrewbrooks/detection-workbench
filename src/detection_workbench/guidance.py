@@ -26,7 +26,10 @@ Tuning order
 - Fix the rule first: tighter content, buffers, flow direction.
 - Suppress by address only for known-benign sources.
 - Threshold (event_filter/rate_filter) only when volume, not presence, is the signal.
-- Always prove a change with test_tuning, and check other_sids_changed and that wanted alerts survive.
+- Always prove a change with test_tuning, and check other_sids_changed and that wanted alerts survive. Read the `review` it
+  returns (the rule diff and its checks, or the config entry) before recommending the change.
+- A tested change is only proposed. The analyst accepts or rejects it: call update_decision when they tell you to, never on your
+  own judgement. export_tuning then produces the rule and config text to apply; run validate_rules on the result.
 
 Explaining hits
 - Use explain_alert and walk from the rule options to the matched bytes.

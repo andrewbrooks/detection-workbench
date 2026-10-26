@@ -27,7 +27,7 @@
     "-v",
     "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/runs/r-0003/out:/out",
     "-v",
-    "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/runs/r-0003/input-ihz17im8/capture.pcap:/in/0/capture.pcap:ro",
+    "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/runs/r-0003/input-dpcbkbgz/capture.pcap:/in/0/capture.pcap:ro",
     "--entrypoint",
     "/home/snorty/snort3/bin/snort",
     "detection-workbench/snort3:f15f714fd61a-1d2fe7a6",
@@ -63,13 +63,13 @@
   },
   "docker_image": "ciscotalos/snort3@sha256:f15f714fd61ade114b1039687dd43352cae26cd6401b89f2b03404e0d21e322f",
   "docker_run_image": "detection-workbench/snort3:f15f714fd61a-1d2fe7a6",
-  "duration_s": 0.314,
+  "duration_s": 0.264,
   "engine": "snort",
   "engine_version": "3.10.0.0",
   "error_excerpt": "",
   "exit_code": 0,
   "extra_argv": [],
-  "finished": "2026-10-23T17:42:03.525002Z",
+  "finished": "2026-10-26T21:43:41.900438Z",
   "id": "r-0003",
   "inputs": [
     {
@@ -96,7 +96,7 @@
     "source": "evidence"
   },
   "schema_version": 1,
-  "started": "2026-10-23T17:42:03.209338Z",
+  "started": "2026-10-26T21:43:41.635101Z",
   "status": "ok",
   "timed_out": false,
   "totals": {

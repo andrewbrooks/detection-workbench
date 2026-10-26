@@ -7,6 +7,9 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+from ..engines.snort.changes import checks_text, filter_snippet, rule_diff
+from ..engines.snort.config_gen import FILTER_TYPES
+from ..engines.snort.rules import find_rule
 from ..safety.paths import write_text_safely
 from .store import CaseStore
 
@@ -73,6 +76,37 @@ def _event_detail(e: dict) -> str:
 
 
 MAX_TIMELINE = 200
+
+
+def _run_rules(store: CaseStore, run_id: str) -> str | None:
+    """The rule set a run executed (its immutable copy), or None when it is not available."""
+    try:
+        return (store.root / "runs" / run_id / "cfg" / "rules.rules").read_text(errors="replace")
+    except OSError:
+        return None
+
+
+def _change_view(store: CaseStore, d: dict) -> list[str]:
+    """How a decision's change is shown: a rule diff with checks, the config entry, or (as a fallback) the raw record."""
+    change = d.get("change") or {}
+    raw = [f"Change: `{json.dumps(change, sort_keys=True)}`\n"]
+    try:
+        if change.get("kind") == "rule_edit":
+            before = _run_rules(store, d["before_run"])
+            old = find_rule(before, 1, change["sid"]) if before else None
+            diff = rule_diff(old.text if old else None, str(change["rule"]))
+            note = "Rule diff (option by option):" if diff["granularity"] == "option" else "Rule (the previous version was not available to compare):"
+            out = [note + "\n", "```diff", *diff["lines"], "```\n"]
+            if diff["checks"]:
+                out.append("Rule check: " + checks_text(diff["checks"]) + "\n")
+            return out
+        if change.get("kind") in FILTER_TYPES:
+            return ["Config entry:\n", "```lua", filter_snippet(change), "```\n"]
+    except (KeyError, TypeError, ValueError):
+        pass
+    return raw
+
+
 TOP_SIDS = 10
 BAR_WIDTH = 10
 
@@ -214,12 +248,15 @@ def export_markdown(store: CaseStore) -> str:
     for d in s["decisions"]:
         o.append(f"### {d['id']} — {d['kind']} ({d['status']})\n")
         o.append(f"{d['reason']}\n\nBefore `{d['before_run']}` → after `{d['after_run']}`\n")
+        if d.get("history"):
+            o.append("Status history: " + " → ".join([d["history"][0]["from"]] + [h["to"] for h in d["history"]])
+                     + f" (last change {d['history'][-1]['at']})\n")
         o.append(_table(["sid", "before", "after", "change"],
                         [[sid, c.get("before"), c.get("after"), _change(c.get("before", 0), c.get("after", 0))]
                          for sid, c in sorted(d["counts"].items())]))
         if d.get("counts_omitted"):
             o.append(f"_{_plural(d['counts_omitted'], 'unchanged SID')} not listed._\n")
-        o.append(f"Change: `{json.dumps(d['change'], sort_keys=True)}`\n")
+        o.extend(_change_view(store, d))
 
     # ---- caveats ----
     cav = []

@@ -25,11 +25,57 @@
           "before": 6
         }
       },
-      "created": "2026-10-23T17:42:03.859474Z",
+      "created": "2026-10-26T21:43:42.234852Z",
+      "history": [
+        {
+          "at": "2026-10-26T21:43:42.840288Z",
+          "field": "status",
+          "from": "proposed",
+          "to": "rejected"
+        }
+      ],
       "id": "d-0001",
       "kind": "event_filter",
       "reason": "SYN rule fires on every scan packet; volume, not presence, is the noise",
-      "status": "proposed"
+      "status": "rejected",
+      "updated": "2026-10-26T21:43:42.840288Z"
+    },
+    {
+      "after_run": "r-0006",
+      "before_run": "r-0003",
+      "change": {
+        "kind": "rule_edit",
+        "rule": "alert tcp any any -> any any ( msg:\"WBTEST any SYN\"; flags:S; detection_filter:track by_src,count 5,seconds 60; sid:1000003; rev:2; )",
+        "sid": 1000003
+      },
+      "counts": {
+        "1000001": {
+          "after": 1,
+          "before": 1
+        },
+        "1000002": {
+          "after": 2,
+          "before": 2
+        },
+        "1000003": {
+          "after": 1,
+          "before": 6
+        }
+      },
+      "created": "2026-10-26T21:43:42.836393Z",
+      "history": [
+        {
+          "at": "2026-10-26T21:43:42.843889Z",
+          "field": "status",
+          "from": "proposed",
+          "to": "accepted"
+        }
+      ],
+      "id": "d-0002",
+      "kind": "rule_edit",
+      "reason": "Same effect from inside the rule, so the fix travels with the rule set instead of the sensor config",
+      "status": "accepted",
+      "updated": "2026-10-26T21:43:42.843889Z"
     }
   ],
   "schema_version": 1

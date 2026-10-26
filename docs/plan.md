@@ -139,7 +139,9 @@ class Engine(Protocol):
   - `explain_alert(run_id, alert_idx)`
   - `profile_rules(pcap_id, rules_id, top=20)`
   - `suggest_tuning_targets(run_id)`: ranks by count, distinct src/dst, top-source share.
-  - `test_tuning(before_run_id, change, reason)`
+  - `test_tuning(before_run_id, change, reason)`: also returns `review`, an option-level rule diff with checks (`rev` bumped, sid unchanged, fast pattern) or the config entry
+  - `update_decision(decision_id, status)`: the analyst's verdict (`accepted`, `rejected`, back to `proposed`), kept in the decision's `history`
+  - `export_tuning(decision_ids?, path_prefix?, overwrite?, include_unaccepted?)`: accepted rule edits as a rules fragment and accepted filters as one Lua table per type (latest edit per sid wins); written to `<prefix>.rules` / `<prefix>.lua` only after every target path is vetted
   - `diff_runs(a, b)`: added/removed/changed by sid, alerts keyed by (sid, pkt_num, src, dst).
   - `write_rules_file(path, rules_text, overwrite=false)`
   - `convert_snort2(conf_path | rules_path)`: registered only if `snort2lua` is present.

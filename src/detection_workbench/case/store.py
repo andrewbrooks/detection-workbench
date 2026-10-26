@@ -255,12 +255,35 @@ class CaseStore:
         with self._txn() as tx:
             item = {"id": tx.next_id("decision"), "kind": kind, "change": change, "reason": reason,
                     "before_run": before_run, "after_run": after_run, "counts": counts,
-                    "status": status, "created": now()}
+                    "status": status, "created": now(), "updated": now(), "history": []}
             if counts_omitted:
                 item["counts_omitted"] = counts_omitted  # unchanged SIDs left out of `counts` to keep the record small
             tx.doc("decisions")["items"].append(item)
             tx.event("decision.recorded", item["id"], {"kind": kind})
             return item
+
+    def get_decision(self, decision_id: str) -> dict:
+        for it in self._doc("decisions")["items"]:
+            if it["id"] == decision_id:
+                return it
+        raise CaseError(f"unknown decision {decision_id}")
+
+    def update_decision(self, decision_id: str, status: str) -> dict:
+        """Accept, reject, or put back to proposed. The change is kept in the decision's history and the event log."""
+        if status not in DECISION_STATUSES:
+            raise CaseError(f"status must be one of {DECISION_STATUSES}")
+        with self._txn() as tx:
+            for it in tx.doc("decisions")["items"]:
+                if it["id"] == decision_id:
+                    break
+            else:
+                raise CaseError(f"unknown decision {decision_id}")
+            if it["status"] != status:
+                t = now()
+                it.setdefault("history", []).append({"at": t, "field": "status", "from": it["status"], "to": status})
+                it["status"], it["updated"] = status, t
+                tx.event("decision.updated", decision_id, {"status": status})
+            return it
 
     def add_note(self, text: str, author: str = "client") -> dict:
         if author not in ("user", "client"):

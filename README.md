@@ -89,12 +89,18 @@ with `test_tuning`, and be honest about what one capture proves.
 | Area | Tools |
 |---|---|
 | Case | `create_case`, `open_case`, `list_cases`, `register_evidence`, `add_finding`, `update_finding`, `add_note`, `update_case` (write the analysis summary, close the case), `get_case`, `export_case` (Markdown report, Timesketch CSV) |
-| Snort | `get_status`, `pcap_summary`, `validate_rules`, `run_pcap`, `get_alerts`, `explain_alert`, `profile_rules`, `suggest_tuning_targets`, `test_tuning`, `diff_runs`, `write_rules_file`, `convert_snort2` (when `snort2lua` is present) |
+| Snort | `get_status`, `pcap_summary`, `validate_rules`, `run_pcap`, `get_alerts`, `explain_alert`, `profile_rules`, `suggest_tuning_targets`, `test_tuning`, `update_decision`, `export_tuning`, `diff_runs`, `write_rules_file`, `convert_snort2` (when `snort2lua` is present) |
 
 A case is a directory of JSON files plus an append-only `events.jsonl`; see [docs/case-schema.md](docs/case-schema.md).
 Runs are immutable and record the engine and version, argument list, input hashes, and rule-set hash.
 
 `export_case` writes a report with the analyst summary (set with `update_case`), an overview of the captures, engines and rule sets, findings, per-run alert tables, tuning decisions with before and after counts, caveats (stream warnings, truncated or failed runs, single-sample limits), an event timeline and a run appendix. The report presents recorded data; the conclusions in it are the summary the analyst or client wrote. See the [example case](docs/examples/README.md).
+
+**Tuning is proposed by the model and decided by you.** `test_tuning` records a change as `proposed` and returns a `review`: an
+option-by-option diff of an edited rule, with checks (did `rev` go up? does the rule keep a fast pattern?), or the config entry a
+filter adds. The report shows the same. When you agree, `update_decision` records the verdict (accepted or rejected, with its
+history), and `export_tuning` turns the accepted changes into a rules fragment and a config snippet (`.rules` and `.lua` files if you
+give it a path) to apply to your rules and `snort.lua`.
 
 ## Safety model
 

@@ -7,9 +7,12 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 First release: Phase 1 of the plan in [docs/plan.md](docs/plan.md).
 
 ### Added
-- MCP server (stdio) with 22 tools: case management, `register_evidence`, `pcap_summary`, `validate_rules`, `run_pcap`,
-  `get_alerts`, `explain_alert`, `profile_rules`, `suggest_tuning_targets`, `test_tuning`, `diff_runs`, `write_rules_file`,
+- MCP server (stdio) with 24 tools: case management, `register_evidence`, `pcap_summary`, `validate_rules`, `run_pcap`,
+  `get_alerts`, `explain_alert`, `profile_rules`, `suggest_tuning_targets`, `test_tuning`, `update_decision`, `export_tuning`,
+  `diff_runs`, `write_rules_file`,
   `convert_snort2`, `update_case` and `export_case`, plus the `detection_engineering` prompt.
+- Tuning review and apply: `test_tuning` returns a rule diff with checks (or the config entry); the report shows them; `update_decision`
+  records the analyst's verdict with history; `export_tuning` writes the accepted changes as a rules fragment and a config snippet.
 - Snort 3 engine running natively or in Docker (image pinned by digest), verified on Snort 3.10.0.0.
 - Case file (schema v1): immutable runs, findings, decisions, notes and an append-only event log.
 - Markdown case report (analyst summary, per-run results, decisions with before/after change, caveats, timeline) and a

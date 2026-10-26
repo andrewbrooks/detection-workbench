@@ -44,6 +44,14 @@ def build(case_dir: Path) -> Path:
     w.add_finding(f"SID 1000003 fires {t['counts']['1000003']['before']} times from one scanner; a limit of one "
                   f"alert per source per minute leaves {t['counts']['1000003']['after']}.",
                   [before["run_id"], t["after_run"]], [pcap, rules])
+    # the same noisy rule fixed from inside the rule instead of from the config: a second candidate to compare
+    fixed_rule = ('alert tcp any any -> any any ( msg:"WBTEST any SYN"; flags:S; '
+                  'detection_filter:track by_src,count 5,seconds 60; sid:1000003; rev:2; )')
+    t2 = w.test_tuning(before["run_id"], {"kind": "rule_edit", "sid": 1000003, "rule": fixed_rule},
+                       "Same effect from inside the rule, so the fix travels with the rule set instead of the sensor config")
+    w.update_decision(t["decision_id"], "rejected")
+    w.update_decision(t2["decision_id"], "accepted")
+    w.export_tuning(path_prefix=str(w.store.root / "exports" / "accepted-tuning"))
     w.add_note("Synthetic capture bundled with the repository; results say nothing about production traffic.")
     c = t["counts"]
     w.update_case(
@@ -53,10 +61,13 @@ def build(case_dir: Path) -> Path:
             f"`WBTEST-MARKER-7731` ({f1['id']}, run {before['run_id']}). The only noisy rule is the SYN rule "
             f"(sid 1000003): {c['1000003']['before']} alerts, all from one scanner (10.0.4.20) sweeping five ports "
             f"on 10.0.9.9.\n\n"
-            f"**Tested change.** An `event_filter` limit of one alert per source per minute takes sid 1000003 from "
-            f"{c['1000003']['before']} to {c['1000003']['after']} alerts and leaves sids 1000001 and 1000002 "
-            f"unchanged (run {t['after_run']}, decision {t['decision_id']}). It is recorded as `proposed`; nobody has "
-            f"accepted it.\n\n"
+            f"**Two candidate fixes, same result.** An `event_filter` limit of one alert per source per minute (run "
+            f"{t['after_run']}, decision {t['decision_id']}) and a `detection_filter` written into the rule itself (run "
+            f"{t2['after_run']}, decision {t2['decision_id']}) both take sid 1000003 from {c['1000003']['before']} to "
+            f"{c['1000003']['after']} alerts and leave sids 1000001 and 1000002 unchanged.\n\n"
+            f"**Decision.** {t['decision_id']} was rejected and {t2['decision_id']} accepted, because a fix inside the rule "
+            f"travels with the rule set. The accepted rule is in `exports/accepted-tuning.rules`. The rule check notes that "
+            f"sid 1000003 has no content to build a fast pattern on; that was already true before the edit.\n\n"
             f"**Limits.** One 13-packet synthetic capture. It shows the change works mechanically, not that a limit of "
             f"one per minute is right for production traffic."),
         status="closed")

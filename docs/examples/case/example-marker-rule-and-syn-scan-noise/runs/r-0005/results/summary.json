@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "snort_ok": true,
+  "errors": [],
+  "warnings": [
+    {
+      "severity": "warning",
+      "line": null,
+      "sid": 1000003,
+      "error": "port rule 1:1000003:2 has no fast pattern",
+      "plain": "The rule has no content to use as a fast pattern, so Snort must evaluate it on every packet. Add a unique content.",
+      "source": "snort",
+      "rule": null
+    }
+  ],
+  "lint": [
+    {
+      "severity": "warning",
+      "line": 3,
+      "sid": 1000003,
+      "error": "No positive content, so there is no fast pattern: Snort must evaluate this rule on every packet in scope.",
+      "plain": "No positive content, so there is no fast pattern: Snort must evaluate this rule on every packet in scope.",
+      "source": "workbench_lint",
+      "rule": "alert tcp any any -> any any ( msg:\"WBTEST any SYN\"; flags:S; detection_filter:track by_src,count 5,seconds 60; sid:1000003; rev:2; )"
+    }
+  ],
+  "rechecked_individually": [],
+  "recheck_incomplete": false,
+  "rules_checked": 3
+}

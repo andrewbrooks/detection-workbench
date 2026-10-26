@@ -170,6 +170,25 @@ def build_server(cfg: Config | None = None, wb: Workbench | None = None) -> MCPS
         return wb.test_tuning(before_run_id, change, reason)
 
     @tool()
+    def update_decision(decision_id: str, status: str) -> dict:
+        """Record the analyst's verdict on a tested tuning change: 'accepted', 'rejected', or back to 'proposed'. Only the
+        analyst decides: call this when they have told you to, never on your own judgement. The change of status is kept in
+        the decision's history and the case event log.
+        Example: update_decision(decision_id="d-0002", status="accepted")"""
+        return wb.update_decision(decision_id, status)
+
+    @tool()
+    def export_tuning(decision_ids: list[str] | None = None, path_prefix: str | None = None, overwrite: bool = False,
+                      include_unaccepted: bool = False) -> dict:
+        """The accepted tuning changes as text to apply: a rules fragment (the edited rules, to replace the rules with the same
+        sid) and a config snippet (suppress / event_filter / rate_filter tables to merge into snort.lua). Defaults to every
+        accepted decision; a decision that is not accepted is refused unless include_unaccepted=true (a preview). With
+        path_prefix the text is also written to <prefix>.rules and <prefix>.lua (inside allowed_roots; existing files are not
+        replaced unless overwrite=true). Validate the rules afterwards with validate_rules.
+        Example: export_tuning(path_prefix="~/rules/tuning-2026-10")"""
+        return wb.export_tuning(decision_ids, path_prefix, overwrite, include_unaccepted)
+
+    @tool()
     def diff_runs(run_a: str, run_b: str) -> dict:
         """Alerts added, removed and changed between two runs, grouped by SID. Example: diff_runs(run_a="r-0002", run_b="r-0003")"""
         return wb.diff_runs(run_a, run_b)

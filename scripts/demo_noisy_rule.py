@@ -84,6 +84,14 @@ async def main() -> int:
         for sid, c in t["counts"].items():
             print(f"   sid {sid:>8}  {c['before']:>4} -> {c['after']:>4}")
         print("   other SIDs changed:", t["other_sids_changed"] or "none")
+        print("   review (what the model sees before recommending the change):")
+        for line in t["review"]["diff"]:
+            print("     " + line)
+        print("   checks:", "; ".join(c["text"] for c in t["review"]["checks"]))
+        await call("update_decision", decision_id=t["decision_id"], status="accepted")  # the analyst's call
+        ex = await call("export_tuning", path_prefix=str(work / "cases" / "accepted-tuning"))
+        say(f"accepted {t['decision_id']}; exported to {ex['written'][0]}")
+        print("   " + ex["rules"].strip().replace("\n", "\n   "))
         await call("update_finding", finding_id=f1["id"], status="confirmed")
         await call("add_finding", run_ids=[t["after_run"]],
                    statement=f"Rewrite of 1000042 removes {t['counts']['1000042']['before'] - t['counts']['1000042']['after']} "

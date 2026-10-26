@@ -18,9 +18,10 @@ Case directories are created owner-only (`0700`), and the JSON files are written
 - **alerts.jsonl** (one per line): `{alert_idx, datetime, seconds, pkt_num, pkt_gen, proto, dir, src_ip, src_port, dst_ip, dst_port, service, gid, sid, rev, msg, class, priority, action, b64_data}`
 - **findings.json:** `{schema_version, items: [{id, statement, status: open|confirmed|dismissed, run_ids: [...], evidence_ids: [...], created, updated, history: [{at, field, from, to}]}]}`
   - `add_finding` refuses unknown run/evidence ids.
-- **decisions.json:** `{schema_version, items: [{id, kind: suppress|event_filter|rate_filter|rule_edit, change: {...typed}, reason, before_run, after_run, counts: {sid: {before, after}}, counts_omitted? (unchanged SIDs left out of a very long list), status: proposed|accepted|rejected, created}]}`
+- **decisions.json:** `{schema_version, items: [{id, kind: suppress|event_filter|rate_filter|rule_edit, change: {...typed}, reason, before_run, after_run, counts: {sid: {before, after}}, counts_omitted? (unchanged SIDs left out of a very long list), status: proposed|accepted|rejected, created, updated, history: [{at, field, from, to}]}]}`
+- Decisions written before `updated` and `history` existed are read as having an empty history.
 - **notes.json:** `{schema_version, items: [{id, text, author: user|client, created}]}`
-- **events.jsonl** (append-only): `{ts, seq, type: case.created|evidence.registered|run.recorded|finding.added|finding.updated|decision.recorded|note.added|export.written|case.updated, ref, data: {small diff}}`
+- **events.jsonl** (append-only): `{ts, seq, type: case.created|evidence.registered|run.recorded|finding.added|finding.updated|decision.recorded|decision.updated|note.added|export.written|case.updated, ref, data: {small diff}}`
   - `seq` is monotonic, and the full state is reconstructible from it plus the run dirs.
 
 ## Result files

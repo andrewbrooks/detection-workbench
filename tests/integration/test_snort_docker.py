@@ -310,3 +310,99 @@ def test_a_failed_start_is_reported_as_an_error_run_not_as_zero_alerts(wb, monke
     monkeypatch.setattr(wb.engine, "_image", "detection-workbench/snort3:does-not-exist")
     bad = wb.run_pcap(ev(wb, "pcaps/http_marker.pcap"), rules_id=ev(wb, "rules/good.rules"))
     assert bad["status"] == "error" and bad["error_excerpt"] and "total_alerts" not in bad
+
+
+def test_accepted_tuning_exports_text_that_snort_accepts_and_that_reproduces_the_result(tmp_path):
+    import shutil
+
+    from detection_workbench.engines.snort.config_gen import generate_config
+
+    root = tmp_path / "in"
+    root.mkdir()
+    w = Workbench(Config(case_dir=tmp_path / "cases", allowed_roots=(root.resolve(),)))
+    if not w.engine.version().available:
+        pytest.skip("Snort unavailable")
+    w.create_case("accept")
+    pc = w.register_evidence(shutil.copy(FIX / "pcaps/noisy.pcap", root / "noisy.pcap"))["id"]
+    rules = w.register_evidence(shutil.copy(FIX / "rules/noisy.rules", root / "noisy.rules"))["id"]
+    base = w.run_pcap(pc, rules_id=rules)
+    new = ('alert http any any -> any any ( msg:"LOCAL noisy GET index"; flow:to_server,established; http_uri; '
+           'content:"/index",fast_pattern; sid:1000042; rev:2; classtype:web-application-activity; )')
+
+    edit = w.test_tuning(base["run_id"], {"kind": "rule_edit", "sid": 1000042, "rule": new}, "match only /index")
+    review = edit["review"]  # what the model sees right after proposing the change
+    assert review["kind"] == "rule_edit" and "- rev:1" in review["diff"] and "+ rev:2" in review["diff"]
+    assert '+ content:"/index",fast_pattern' in review["diff"] and all(c["level"] == "ok" for c in review["checks"])
+    sup = w.test_tuning(base["run_id"], {"kind": "suppress", "sid": 1000042, "track": "by_src", "ip": "10.0.4.20"}, "scanner")
+    assert "suppress = { { gid = 1, sid = 1000042, track = 'by_src', ip = '10.0.4.20' } }" in sup["review"]["config_entry"]
+    flt = w.test_tuning(base["run_id"], {"kind": "event_filter", "sid": 1000042, "type": "limit", "track": "by_src",
+                                         "count": 1, "seconds": 60}, "limit")
+
+    with pytest.raises(WorkbenchError, match="not accepted yet"):
+        w.export_tuning([edit["decision_id"]])
+    w.update_decision(edit["decision_id"], "accepted")
+    w.update_decision(sup["decision_id"], "accepted")
+    w.update_decision(flt["decision_id"], "rejected")
+    out = w.export_tuning(path_prefix=str(root / "tuning"))
+    assert out["decisions"] == [edit["decision_id"], sup["decision_id"]] and "event_filter" not in out["config"]
+    assert sorted(Path(p).name for p in out["written"]) == ["tuning.lua", "tuning.rules"]
+
+    # the exported rules are a valid rules file, and they reproduce the alert count the tuning run measured
+    exported = w.register_evidence(str(root / "tuning.rules"))
+    assert exported["type"] == "rules" and w.validate_rules(rules_id=exported["id"])["ok"]
+    again = w.run_pcap(pc, rules_id=exported["id"])
+    assert counts(again)[1000042] == edit["counts"]["1000042"]["after"]
+
+    # the exported config loads in Snort: comments inside the table, trailing commas and all
+    cfg_dir = tmp_path / "cfgcheck"
+    cfg_dir.mkdir()
+    (cfg_dir / "check.lua").write_text(generate_config(etc_dir=w.cfg.snort.docker_etc) + "\n" + out["config"])
+    (cfg_dir / "empty.rules").write_text("")
+    for f in cfg_dir.iterdir():
+        f.chmod(0o644)
+    cfg_dir.chmod(0o755)
+    s = w.cfg.snort
+    r = subprocess.run([docker_bin(), "run", "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL",
+                        "--user", f"{os.getuid()}:{os.getgid()}", "-v", f"{cfg_dir}:/chk:ro", "--entrypoint", s.docker_binary,
+                        w.engine._image, "-T", "-c", "/chk/check.lua", "-R", "/chk/empty.rules"],
+                       capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0 and "successfully validated" in r.stdout + r.stderr, (r.stdout + r.stderr)[-400:]
+
+    md = Path(w.export_case("markdown")["path"]).read_text()
+    assert "### d-0001 — rule_edit (accepted)" in md and "Status history: proposed → accepted" in md
+    assert "```diff" in md and "- rev:1\n+ rev:2" in md and "(rejected)" in md and "```lua" in md
+    assert "2 decisions" not in md and "3 decisions (2 accepted, 1 rejected)" in md
+
+
+def test_writeup_example_responses_have_the_fields_the_tools_return(tmp_path):
+    """The write-up's example responses are pasted from real output; this fails when a tool gains or loses a field."""
+    import json
+    import re
+
+    text = (Path(__file__).parents[2] / "docs" / "writeup.md").read_text()
+    section = text[text.index("## Example output"):text.index('## What "proved" means here')]
+    docs = {}
+    for tool in ("pcap_summary", "validate_rules", "run_pcap", "suggest_tuning_targets", "explain_alert", "test_tuning"):
+        m = re.search(r"```json\n(.*?)\n```", section[section.index(f"### `{tool}`"):], re.S)
+        docs[tool] = json.loads(m.group(1))
+
+    w = Workbench(Config(case_dir=tmp_path / "cases", allowed_roots=(FIX.resolve(),)))
+    if not w.engine.version().available:
+        pytest.skip("Snort unavailable")
+    w.create_case("drift")
+    pc, ru = ev(w, "pcaps/noisy.pcap"), ev(w, "rules/noisy.rules")
+    real = {"pcap_summary": w.pcap_summary(pc), "validate_rules": w.validate_rules(rules_id=ru)}
+    run = w.run_pcap(pc, rules_id=ru)
+    real["run_pcap"] = run
+    real["suggest_tuning_targets"] = w.suggest_tuning_targets(run["run_id"])
+    hm = w.run_pcap(ev(w, "pcaps/http_marker.pcap"), rules_id=ev(w, "rules/good.rules"))
+    idx = next(a["alert_idx"] for a in w.get_alerts(hm["run_id"], sid=1000001)["alerts"])
+    real["explain_alert"] = w.explain_alert(hm["run_id"], idx)
+    real["test_tuning"] = w.test_tuning(run["run_id"], {"kind": "suppress", "sid": 1000042, "track": "by_src", "ip": "10.0.4.20"}, "x")
+
+    omitted = {"validate_rules": {"lint"}, "explain_alert": {"inspector_buffer"}}  # the text above each block says so
+    for tool, doc in docs.items():
+        want, have = set(real[tool]), set(doc) | omitted.get(tool, set())
+        assert want == have, f"{tool}: documented fields differ from the real response: missing {sorted(want - have)}, extra {sorted(have - want)}"
+    assert set(docs["run_pcap"]["stream_caveats"]) == set(real["run_pcap"]["stream_caveats"])
+    assert set(docs["test_tuning"]["review"]) == set(real["test_tuning"]["review"])

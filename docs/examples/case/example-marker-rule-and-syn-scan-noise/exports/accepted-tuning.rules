@@ -1,0 +1,3 @@
+# Detection Workbench: accepted rule changes. Replace the rule with the same sid in your rules file.
+# d-0002: Same effect from inside the rule, so the fix travels with the rule set instead of the sensor config
+alert tcp any any -> any any ( msg:"WBTEST any SYN"; flags:S; detection_filter:track by_src,count 5,seconds 60; sid:1000003; rev:2; )

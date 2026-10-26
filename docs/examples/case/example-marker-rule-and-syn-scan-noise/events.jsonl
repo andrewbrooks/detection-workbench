@@ -1,15 +1,21 @@
-{"data": {"title": "Example: marker rule and SYN-scan noise"}, "ref": "example-marker-rule-and-syn-scan-noise", "seq": 1, "ts": "2026-10-23T17:42:02.868331Z", "type": "case.created"}
-{"data": {"path": "<repo>/tests/fixtures/pcaps/http_marker.pcap", "sha256": "e4abeab3ce82ae01f19c8dd3dc7b36a2cd9a7a416b0c4d7463227acb51595dbb"}, "ref": "e-0001", "seq": 2, "ts": "2026-10-23T17:42:02.870460Z", "type": "evidence.registered"}
-{"data": {"path": "<repo>/tests/fixtures/rules/good.rules", "sha256": "2870dd02f3d1bf2e934bf2ab8c180345981417e9e2ac078abfd6b3983e0f6f7f"}, "ref": "e-0002", "seq": 3, "ts": "2026-10-23T17:42:02.874388Z", "type": "evidence.registered"}
-{"data": {"kind": "summary", "status": "ok"}, "ref": "r-0001", "seq": 4, "ts": "2026-10-23T17:42:02.882532Z", "type": "run.recorded"}
-{"data": {"kind": "validate", "status": "ok"}, "ref": "r-0002", "seq": 5, "ts": "2026-10-23T17:42:03.205002Z", "type": "run.recorded"}
-{"data": {"kind": "run", "status": "ok"}, "ref": "r-0003", "seq": 6, "ts": "2026-10-23T17:42:03.527301Z", "type": "run.recorded"}
-{"data": {"statement": "SID 1000001 (marker in URI) fires once, on the target request: data in packet 6, alert reported on packet 7 (the flush trigger)."}, "ref": "f-0001", "seq": 7, "ts": "2026-10-23T17:42:03.529626Z", "type": "finding.added"}
-{"data": {"status": "confirmed"}, "ref": "f-0001", "seq": 8, "ts": "2026-10-23T17:42:03.533494Z", "type": "finding.updated"}
-{"data": {"kind": "tuning", "status": "ok"}, "ref": "r-0004", "seq": 9, "ts": "2026-10-23T17:42:03.857382Z", "type": "run.recorded"}
-{"data": {"kind": "event_filter"}, "ref": "d-0001", "seq": 10, "ts": "2026-10-23T17:42:03.859501Z", "type": "decision.recorded"}
-{"data": {"statement": "SID 1000003 fires 6 times from one scanner; a limit of one alert per source per minute leaves 1."}, "ref": "f-0002", "seq": 11, "ts": "2026-10-23T17:42:03.863302Z", "type": "finding.added"}
-{"data": {}, "ref": "n-0001", "seq": 12, "ts": "2026-10-23T17:42:03.866915Z", "type": "note.added"}
-{"data": {"status": "closed", "summary_chars": 759}, "ref": "example-marker-rule-and-syn-scan-noise", "seq": 13, "ts": "2026-10-23T17:42:03.870544Z", "type": "case.updated"}
-{"data": {"format": "markdown", "path": "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/exports/example-marker-rule-and-syn-scan-noise-markdown.md"}, "ref": "example-marker-rule-and-syn-scan-noise-markdown.md", "seq": 14, "ts": "2026-10-23T17:42:03.873243Z", "type": "export.written"}
-{"data": {"format": "timesketch_csv", "path": "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/exports/example-marker-rule-and-syn-scan-noise-timesketch_csv.csv"}, "ref": "example-marker-rule-and-syn-scan-noise-timesketch_csv.csv", "seq": 15, "ts": "2026-10-23T17:42:03.875866Z", "type": "export.written"}
+{"data": {"title": "Example: marker rule and SYN-scan noise"}, "ref": "example-marker-rule-and-syn-scan-noise", "seq": 1, "ts": "2026-10-26T21:43:41.343602Z", "type": "case.created"}
+{"data": {"path": "<repo>/tests/fixtures/pcaps/http_marker.pcap", "sha256": "e4abeab3ce82ae01f19c8dd3dc7b36a2cd9a7a416b0c4d7463227acb51595dbb"}, "ref": "e-0001", "seq": 2, "ts": "2026-10-26T21:43:41.345961Z", "type": "evidence.registered"}
+{"data": {"path": "<repo>/tests/fixtures/rules/good.rules", "sha256": "2870dd02f3d1bf2e934bf2ab8c180345981417e9e2ac078abfd6b3983e0f6f7f"}, "ref": "e-0002", "seq": 3, "ts": "2026-10-26T21:43:41.350008Z", "type": "evidence.registered"}
+{"data": {"kind": "summary", "status": "ok"}, "ref": "r-0001", "seq": 4, "ts": "2026-10-26T21:43:41.358619Z", "type": "run.recorded"}
+{"data": {"kind": "validate", "status": "ok"}, "ref": "r-0002", "seq": 5, "ts": "2026-10-26T21:43:41.630778Z", "type": "run.recorded"}
+{"data": {"kind": "run", "status": "ok"}, "ref": "r-0003", "seq": 6, "ts": "2026-10-26T21:43:41.902758Z", "type": "run.recorded"}
+{"data": {"statement": "SID 1000001 (marker in URI) fires once, on the target request: data in packet 6, alert reported on packet 7 (the flush trigger)."}, "ref": "f-0001", "seq": 7, "ts": "2026-10-26T21:43:41.905124Z", "type": "finding.added"}
+{"data": {"status": "confirmed"}, "ref": "f-0001", "seq": 8, "ts": "2026-10-26T21:43:41.909111Z", "type": "finding.updated"}
+{"data": {"kind": "tuning", "status": "ok"}, "ref": "r-0004", "seq": 9, "ts": "2026-10-26T21:43:42.232872Z", "type": "run.recorded"}
+{"data": {"kind": "event_filter"}, "ref": "d-0001", "seq": 10, "ts": "2026-10-26T21:43:42.234879Z", "type": "decision.recorded"}
+{"data": {"statement": "SID 1000003 fires 6 times from one scanner; a limit of one alert per source per minute leaves 1."}, "ref": "f-0002", "seq": 11, "ts": "2026-10-26T21:43:42.238706Z", "type": "finding.added"}
+{"data": {"kind": "validate", "status": "ok"}, "ref": "r-0005", "seq": 12, "ts": "2026-10-26T21:43:42.511660Z", "type": "run.recorded"}
+{"data": {"kind": "tuning", "status": "ok"}, "ref": "r-0006", "seq": 13, "ts": "2026-10-26T21:43:42.833946Z", "type": "run.recorded"}
+{"data": {"kind": "rule_edit"}, "ref": "d-0002", "seq": 14, "ts": "2026-10-26T21:43:42.836425Z", "type": "decision.recorded"}
+{"data": {"status": "rejected"}, "ref": "d-0001", "seq": 15, "ts": "2026-10-26T21:43:42.840297Z", "type": "decision.updated"}
+{"data": {"status": "accepted"}, "ref": "d-0002", "seq": 16, "ts": "2026-10-26T21:43:42.843896Z", "type": "decision.updated"}
+{"data": {"format": "tuning", "paths": ["~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/exports/accepted-tuning.rules"]}, "ref": "accepted-tuning.rules", "seq": 17, "ts": "2026-10-26T21:43:42.848354Z", "type": "export.written"}
+{"data": {}, "ref": "n-0001", "seq": 18, "ts": "2026-10-26T21:43:42.850404Z", "type": "note.added"}
+{"data": {"status": "closed", "summary_chars": 1101}, "ref": "example-marker-rule-and-syn-scan-noise", "seq": 19, "ts": "2026-10-26T21:43:42.853883Z", "type": "case.updated"}
+{"data": {"format": "markdown", "path": "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/exports/example-marker-rule-and-syn-scan-noise-markdown.md"}, "ref": "example-marker-rule-and-syn-scan-noise-markdown.md", "seq": 20, "ts": "2026-10-26T21:43:42.856837Z", "type": "export.written"}
+{"data": {"format": "timesketch_csv", "path": "~/.detection-workbench/cases/example-marker-rule-and-syn-scan-noise/exports/example-marker-rule-and-syn-scan-noise-timesketch_csv.csv"}, "ref": "example-marker-rule-and-syn-scan-noise-timesketch_csv.csv", "seq": 21, "ts": "2026-10-26T21:43:42.859465Z", "type": "export.written"}

@@ -1,0 +1,70 @@
+--------------------------------------------------
+o")~   Snort++ 3.10.0.0
+--------------------------------------------------
+Loading /cfg/validate.lua:
+Loading /home/snorty/snort3/etc/snort/snort_defaults.lua:
+Finished /home/snorty/snort3/etc/snort/snort_defaults.lua:
+	trace
+	alerts
+	daq
+	decode
+	host_cache
+	host_tracker
+	network
+	packets
+	process
+	search_engine
+	so_proxy
+	stream
+	stream_ip
+	stream_udp
+	stream_tcp
+	http_inspect
+	dns
+	ssl
+	ssh
+	wizard
+	output
+	alert_json
+	ips
+	active
+	hosts
+Finished /cfg/validate.lua:
+Loading rule args:
+Loading /cfg/rules.rules:
+Finished /cfg/rules.rules:
+Finished rule args:
+--------------------------------------------------
+ips policies rule stats
+              id  loaded  shared enabled    file
+               0       3       0       3    /cfg/validate.lua
+--------------------------------------------------
+rule counts
+       total rules loaded: 3
+               text rules: 3
+            option chains: 3
+            chain headers: 3
+--------------------------------------------------
+port rule counts
+             tcp     udp    icmp      ip
+     any       1       0       0       0
+     dst       0       1       0       0
+   total       1       1       0       0
+--------------------------------------------------
+service rule counts          to-srv  to-cli
+                     http:        1       1
+                    http2:        1       1
+                    http3:        1       1
+                    total:        3       3
+--------------------------------------------------
+fast pattern groups
+                      dst: 2
+                to_server: 3
+                to_client: 3
+--------------------------------------------------
+search engine (ac_bnfa)
+--------------------------------------------------
+pcap DAQ configured to passive.
+
+Snort successfully validated the configuration (with 1 warnings).
+o")~   Snort exiting

@@ -21,10 +21,14 @@ def test_loads_with_current_schema(store):
     s = store.summary(recent_runs=10)
     assert s["title"].startswith("Example") and len(s["evidence"]) == 2
     assert s["status"] == "closed" and "r-0003" in s["summary"] and "r-0004" in s["summary"] and "f-0001" in s["summary"]
-    assert [r["kind"] for r in store.list_runs()] == ["summary", "validate", "run", "tuning"]
+    assert [r["kind"] for r in store.list_runs()] == ["summary", "validate", "run", "tuning", "validate", "tuning"]  # the edited rules are validated first
     assert [f["status"] for f in s["findings"]] == ["confirmed", "open"]
-    d = s["decisions"][0]
-    assert d["before_run"] == "r-0003" and d["after_run"] == "r-0004" and d["counts"]["1000003"] == {"before": 6, "after": 1}
+    flt, edit = s["decisions"]
+    assert (flt["id"], flt["kind"], flt["status"]) == ("d-0001", "event_filter", "rejected")
+    assert (edit["id"], edit["kind"], edit["status"]) == ("d-0002", "rule_edit", "accepted")
+    assert flt["before_run"] == edit["before_run"] == "r-0003" and (flt["after_run"], edit["after_run"]) == ("r-0004", "r-0006")
+    for d in (flt, edit):
+        assert d["counts"]["1000003"] == {"before": 6, "after": 1} and d["history"][0]["from"] == "proposed"
 
 
 def test_references_resolve_and_events_are_ordered(store):
@@ -74,3 +78,22 @@ def test_writeup_embeds_the_current_example_report_and_csv(store):
 def test_stable_case_id_matches_directory(store):
     assert store.root.name == "example-marker-rule-and-syn-scan-noise"
     assert store.summary()["id"] == store.root.name
+
+
+def test_the_accepted_rule_was_exported_and_matches_the_decision(store):
+    from detection_workbench.engines.snort.rules import parse_rule
+    exported = store.root / "exports" / "accepted-tuning.rules"
+    assert not (store.root / "exports" / "accepted-tuning.lua").exists()  # the only accepted change is a rule edit
+    lines = [ln for ln in exported.read_text().splitlines() if ln and not ln.startswith("#")]
+    rule = store.get_decision("d-0002")["change"]["rule"]
+    assert lines == [rule] and parse_rule(rule).sid == 1000003 and "detection_filter" in rule
+
+
+def test_report_shows_the_diff_status_history_and_both_options(store):
+    md = next((store.root / "exports").glob("*markdown.md")).read_text()
+    assert "### d-0001 — event_filter (rejected)" in md and "### d-0002 — rule_edit (accepted)" in md
+    assert "```diff" in md and "+ detection_filter:track by_src,count 5,seconds 60" in md and "- rev:1\n+ rev:2" in md
+    assert "Config entry:" in md and "Status history: proposed → accepted" in md and "Status history: proposed → rejected" in md
+    assert "2 decisions (1 accepted, 1 rejected)" in md
+    events = [e["type"] for e in store.events()]
+    assert events.count("decision.updated") == 2 and events.count("export.written") >= 3
