@@ -5,3 +5,10 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .DS_Store
+
+# secrets, caches and editor files
+.env
+.mypy_cache/
+dist/
+.vscode/
+*.code-workspace
