@@ -355,7 +355,7 @@ class CaseStore:
         if summary is not None and len(summary) > MAX_SUMMARY_CHARS:
             raise CaseError(f"summary is longer than {MAX_SUMMARY_CHARS} characters")
         with self._txn() as tx:
-            changed = {}
+            changed: dict[str, int | str] = {}
             if summary is not None and summary != tx._case["summary"]:
                 tx._case["summary"] = summary
                 changed["summary_chars"] = len(summary)

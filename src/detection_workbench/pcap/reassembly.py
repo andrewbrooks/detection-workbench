@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .flows import _MOD
-from .reader import iter_packets
+from .reader import Pkt, iter_packets
 
 MAX_STREAM = 4 * 1024 * 1024
 
@@ -41,11 +41,12 @@ def reassemble(
 
     Overlaps: first-seen bytes win. Output stops at the first gap in sequence space.
     """
-    segs, held = [], 0
+    segs: list[tuple[int, Pkt]] = []  # (TCP sequence number, packet)
+    held = 0
     for p in iter_packets(path):
         if p.idx > max_idx:
             break
-        if p.proto != "TCP" or not p.payload:
+        if p.proto != "TCP" or not p.payload or p.seq is None:
             continue
         if (p.src, p.sport, p.dst, p.dport) != (src, sport, dst, dport):
             continue
@@ -54,15 +55,15 @@ def reassemble(
         held += len(p.payload)
         if held > 2 * MAX_STREAM:  # a stream far larger than we will rebuild: stop collecting
             break
-        segs.append(p)
+        segs.append((p.seq, p))
     out = Reassembled()
     if not segs:
         return out
-    base = segs[0].seq
+    base = segs[0][0]
     buf, seen = bytearray(), bytearray()  # seen: 1 where a byte is filled
     placements: list[tuple[int, int, int, int]] = []  # (rel, pkt_idx, length, pkt_off)
-    for p in segs:
-        rel = (p.seq - base) % _MOD
+    for seq, p in segs:
+        rel = (seq - base) % _MOD
         if rel >= (_MOD >> 1):  # before the first selected segment
             continue
         end = rel + len(p.payload)

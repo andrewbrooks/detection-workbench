@@ -213,8 +213,8 @@ def parse_rule(text: str, line: int = 0) -> Rule:
     )
     buffer, last_content = None, None
     for opt in split_options(m["body"]):
-        name, sep, val = opt.partition(":")
-        name, val = name.strip(), (val.strip() if sep else None)
+        name, sep, raw_val = opt.partition(":")
+        name, val = name.strip(), (raw_val.strip() if sep else None)
         r.options.append((name, val))
         if name in STICKY_BUFFERS:
             buffer = name

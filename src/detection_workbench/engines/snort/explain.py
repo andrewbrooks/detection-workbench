@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import base64
 import re
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from ...pcap.hexdump import hexdump
 from ...pcap.reader import iter_packets
@@ -26,7 +28,8 @@ def _find_all(hay: bytes, needle: bytes, nocase: bool) -> list[int]:
         return []
     if nocase:
         hay, needle = hay.lower(), needle.lower()
-    out, i = [], hay.find(needle)
+    out: list[int] = []
+    i = hay.find(needle)
     while i != -1 and len(out) < MAX_OFFSETS:
         out.append(i)
         i = hay.find(needle, i + 1)
@@ -56,7 +59,7 @@ def _content_report(c: Content, wire: bytes | None, inspector: bytes | None, loc
 
 
 def _pcre_report(p: Pcre, wire: bytes | None, inspector: bytes | None) -> dict:
-    rep = {
+    rep: dict[str, Any] = {
         "option": f'pcre:{"!" if p.negated else ""}"/{p.pattern}/{p.flags}"',
         "buffer": p.buffer,
         "negated": p.negated,
@@ -129,7 +132,8 @@ def explain_alert(rule: Rule | None, alert: dict, pcap: Path, display_bytes: int
             inspector = base64.b64decode(alert["b64_data"], validate=False)
         except ValueError:
             inspector = None
-    wire, locate, trigger, data_pkts, dump_src, dump_bytes = None, None, None, [], None, b""
+    locate: Callable[[int], tuple[int, int] | None] | None = None
+    wire, trigger, data_pkts, dump_src, dump_bytes = None, None, [], None, b""
     if alert["pkt_gen"] == "raw":
         for p in iter_packets(pcap):
             if p.idx == alert["pkt_num"]:

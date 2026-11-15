@@ -98,7 +98,8 @@ def parse_alert_file(path: Path, out_jsonl: Path, max_alerts: int) -> dict:
                 "top_source_share": round(srcs[key].most_common(1)[0][1] / n, 4),
             }
         )
-    all_src, all_dst = Counter(), Counter()
+    all_src: Counter[str] = Counter()
+    all_dst: Counter[str] = Counter()
     for c in srcs.values():
         all_src.update(c)
     for c in dsts.values():

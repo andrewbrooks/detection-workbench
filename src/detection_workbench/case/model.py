@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
 SCHEMA_VERSION = 1
-MIGRATIONS: dict[int, callable] = {}  # {from_version: fn(doc) -> doc at from_version+1}
+MIGRATIONS: dict[int, Callable[[dict], dict]] = {}  # {from_version: fn(doc) -> doc at from_version+1}
 
 CASE_STATUSES = ("open", "closed")
 MAX_SUMMARY_CHARS = 20_000

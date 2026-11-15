@@ -195,8 +195,7 @@ def export_markdown(store: CaseStore) -> str:
 
     # ---- overview: what was examined and with what ----
     o += ["## Overview", ""]
-    caps = [(r, _result(store, r)) for r in runs if r.get("kind") == "summary"]
-    caps = [(r, d) for r, d in caps if d]
+    caps = [(r, d) for r in runs if r.get("kind") == "summary" if (d := _result(store, r))]
     if caps:
         rows = []
         for r, d in caps:

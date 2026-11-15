@@ -44,7 +44,7 @@ def analyze_streams(path: Path, max_examples: int = 10) -> dict:
     flows: dict = {}
     truncated = False
     for p in iter_packets(path):
-        if p.proto != "TCP":
+        if p.proto != "TCP" or p.seq is None or p.ack is None:  # TCP packets always carry both
             continue
         key = flow_key(p.src, p.sport, p.dst, p.dport)
         if key not in flows and len(flows) >= MAX_FLOWS:
@@ -61,7 +61,8 @@ def analyze_streams(path: Path, max_examples: int = 10) -> dict:
                 d.first_data_idx = p.idx
         if p.flags & TCP_ACK and (d.ack_max is None or seq_ge(p.ack, d.ack_max)):
             d.ack_max = p.ack
-    unacked, one_sided, examples = 0, 0, []
+    unacked, one_sided = 0, 0
+    examples: list[dict] = []
     for key, fl in flows.items():
         flow_unacked = flow_one_sided = False
         for (ip, port), d in fl.dirs.items():
