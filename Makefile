@@ -2,7 +2,7 @@
 .DEFAULT_GOAL := help
 UV ?= uv
 
-.PHONY: help setup lint format test integration check secrets audit-deps build
+.PHONY: help setup lint format typecheck test integration check secrets audit-deps build
 
 help: ## List the available tasks
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -18,13 +18,16 @@ lint: ## Lint and check formatting (what CI runs)
 format: ## Format the code in place
 	$(UV) run --no-sync ruff format .
 
+typecheck: ## Type-check src/ with mypy
+	$(UV) run --no-sync mypy src
+
 test: ## Unit and parser tests (no Snort or Docker needed)
 	$(UV) run --no-sync pytest -q
 
 integration: ## Integration tests (needs Docker or native Snort 3)
 	DW_INTEGRATION=1 $(UV) run --no-sync pytest -q tests/integration
 
-check: lint test ## Everything CI checks except the integration tests
+check: lint typecheck test ## Everything CI checks except the integration tests
 
 secrets: ## Scan the repository history for secrets
 	gitleaks detect --redact --no-banner
