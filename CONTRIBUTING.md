@@ -12,7 +12,7 @@ example/demo scripts.
 make setup          # uv sync --locked, and enables the pre-commit hook
 docker pull ciscotalos/snort3@sha256:f15f714fd61ade114b1039687dd43352cae26cd6401b89f2b03404e0d21e322f
 
-make check          # lint and format check, unit and parser tests (no Snort needed)
+make check          # lint, format check, type check, unit and parser tests (no Snort needed)
 make integration    # needs Docker (or native Snort 3)
 make help           # every task, including format, secrets, audit-deps and build
 uv run scripts/demo_noisy_rule.py   # the whole loop through a real MCP session
