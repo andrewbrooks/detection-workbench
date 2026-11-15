@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Pre-commit checks: keep secrets and lint or format errors out of history.
+# Enable with:  git config core.hooksPath .githooks   (make setup does this for you)
+# Skip once, if you must:  git commit --no-verify   (CI runs the same checks)
+set -euo pipefail
+
+# Staged files that were added, copied or modified (portable: no bash 4 features).
+staged=()
+while IFS= read -r f; do
+  [ -n "$f" ] && staged+=("$f")
+done < <(git diff --cached --name-only --diff-filter=ACM)
+[ "${#staged[@]}" -eq 0 ] && exit 0
+
+# 1. Scan what is staged for secrets. Anything allowed on purpose is listed by path in .gitleaks.toml.
+if command -v gitleaks > /dev/null 2>&1; then
+  gitleaks git --staged --redact --no-banner
+else
+  echo "pre-commit: gitleaks is not installed, so the secret scan was skipped (CI still scans)." >&2
+  echo "            Install it from https://github.com/gitleaks/gitleaks#installing" >&2
+fi
+
+# 2. Lint and format-check staged Python files with the project's own ruff and settings.
+python_files=()
+for f in "${staged[@]}"; do
+  case "$f" in
+    *.py) python_files+=("$f") ;;
+  esac
+done
+if [ "${#python_files[@]}" -gt 0 ]; then
+  if [ -x .venv/bin/ruff ]; then
+    ruff=(.venv/bin/ruff)
+  elif command -v uv > /dev/null 2>&1; then
+    ruff=(uv run --no-sync ruff)
+  else
+    echo "pre-commit: ruff is not available. Run 'make setup' first." >&2
+    exit 1
+  fi
+  "${ruff[@]}" check "${python_files[@]}"
+  "${ruff[@]}" format --check "${python_files[@]}"
+fi
