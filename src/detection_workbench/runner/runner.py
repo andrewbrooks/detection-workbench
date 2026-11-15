@@ -1,4 +1,5 @@
 """Engine runner: argument lists only, bounded time and output, native or Docker backend."""
+
 from __future__ import annotations
 
 import contextlib
@@ -30,8 +31,10 @@ def _check_mount_path(p: Path) -> str:
     """A host path becomes part of `-v host:target:mode`; ':' and ',' would change how Docker parses it."""
     text = str(p)
     if _UNSAFE_MOUNT_CHARS.search(text):
-        raise PathError(f"{text!r} contains a character (one of  : , \" or a control character) that cannot be "
-                        "mounted safely into the Docker backend; rename or move the file")
+        raise PathError(
+            f'{text!r} contains a character (one of  : , " or a control character) that cannot be '
+            "mounted safely into the Docker backend; rename or move the file"
+        )
     return text
 
 
@@ -78,6 +81,7 @@ def excerpt(path: Path, lines: int, max_bytes: int = 2048) -> str:
 @dataclass
 class RunContext:
     """Where a run lives and how host paths appear to the engine (native: same; Docker: mounts)."""
+
     run_dir: Path
     backend: str  # native | docker
     cfg: Config
@@ -122,10 +126,34 @@ def docker_argv(ctx: RunContext, binary_argv: list[str], binary: str | None = No
     uid, gid = os.getuid(), os.getgid()
     if uid == 0:
         raise RunnerError("refusing to run the Docker backend as root")
-    cmd = [docker_bin(), "run", "--rm", "--name", ctx.name, "--network", "none", "--cap-drop", "ALL",
-           "--security-opt", "no-new-privileges", "--pids-limit", "256", "--memory", "2g",
-           "--read-only", "--tmpfs", "/tmp", "-e", "HOME=/tmp", "--user", f"{uid}:{gid}",
-           "-v", f"{_check_mount_path(ctx.cfg_dir)}:/cfg:ro", "-v", f"{_check_mount_path(ctx.out_dir)}:/out"]
+    cmd = [
+        docker_bin(),
+        "run",
+        "--rm",
+        "--name",
+        ctx.name,
+        "--network",
+        "none",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--pids-limit",
+        "256",
+        "--memory",
+        "2g",
+        "--read-only",
+        "--tmpfs",
+        "/tmp",
+        "-e",
+        "HOME=/tmp",
+        "--user",
+        f"{uid}:{gid}",
+        "-v",
+        f"{_check_mount_path(ctx.cfg_dir)}:/cfg:ro",
+        "-v",
+        f"{_check_mount_path(ctx.out_dir)}:/out",
+    ]
     for host, target in ctx._inputs:
         cmd += ["-v", f"{_check_mount_path(host)}:{target}:ro"]
     return cmd + ["--entrypoint", binary or s.docker_binary, ctx.image or s.docker_image] + binary_argv
@@ -144,20 +172,36 @@ def execute(argv: list[str], ctx: RunContext, timeout_s: int) -> RawRun:
     out, err = ctx.run_dir / "stdout.txt", ctx.run_dir / "stderr.txt"
     env = dict(_ENV)
     if ctx.backend == "docker":  # the docker CLI needs its context (HOME / DOCKER_*) to find the daemon
-        env.update({k: v for k, v in os.environ.items() if k in ("HOME", "DOCKER_HOST", "DOCKER_CONFIG", "DOCKER_CONTEXT")})
-        env["PATH"] = f"{Path(docker_bin()).parent}:{_ENV['PATH']}"  # beside the CLI: its helpers and plugins live there
+        env.update(
+            {k: v for k, v in os.environ.items() if k in ("HOME", "DOCKER_HOST", "DOCKER_CONFIG", "DOCKER_CONTEXT")}
+        )
+        env["PATH"] = (
+            f"{Path(docker_bin()).parent}:{_ENV['PATH']}"  # beside the CLI: its helpers and plugins live there
+        )
     start, timed_out = time.monotonic(), False
     with out.open("wb") as fo, err.open("wb") as fe:
-        proc = subprocess.Popen(argv, shell=False, stdin=subprocess.DEVNULL, stdout=fo, stderr=fe,
-                                env=env, start_new_session=True,
-                                preexec_fn=_limit_files if ctx.backend == "native" else None)
+        proc = subprocess.Popen(
+            argv,
+            shell=False,
+            stdin=subprocess.DEVNULL,
+            stdout=fo,
+            stderr=fe,
+            env=env,
+            start_new_session=True,
+            preexec_fn=_limit_files if ctx.backend == "native" else None,
+        )
         try:
             proc.wait(timeout=timeout_s)
         except subprocess.TimeoutExpired:
             timed_out = True
             if ctx.backend == "docker" and ctx.name:
-                subprocess.run([docker_bin(), "kill", ctx.name], stdout=subprocess.DEVNULL,
-                               stderr=subprocess.DEVNULL, timeout=15, check=False)
+                subprocess.run(
+                    [docker_bin(), "kill", ctx.name],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=15,
+                    check=False,
+                )
             with contextlib.suppress(ProcessLookupError):
                 os.killpg(proc.pid, signal.SIGKILL)
             proc.wait()
@@ -165,5 +209,12 @@ def execute(argv: list[str], ctx: RunContext, timeout_s: int) -> RawRun:
         if p.stat().st_size > MAX_OUTPUT_BYTES:
             with p.open("r+b") as f:
                 f.truncate(MAX_OUTPUT_BYTES)
-    return RawRun(argv=argv, exit_code=None if timed_out else proc.returncode, timed_out=timed_out,
-                  duration_s=round(time.monotonic() - start, 3), stdout=out, stderr=err, backend=ctx.backend)
+    return RawRun(
+        argv=argv,
+        exit_code=None if timed_out else proc.returncode,
+        timed_out=timed_out,
+        duration_s=round(time.monotonic() - start, 3),
+        stdout=out,
+        stderr=err,
+        backend=ctx.backend,
+    )

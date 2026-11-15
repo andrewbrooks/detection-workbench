@@ -1,0 +1,8 @@
+# Secret-scan configuration, used by CI, the pre-commit hook and `make secrets`.
+#
+# Nothing in this repository needs an exception today. If a test or fixture ever has to hold a fake
+# secret on purpose, allow that one file by exact path in an [allowlist] below and say why; a new
+# file with secret-shaped text is otherwise rejected.
+
+[extend]
+useDefault = true

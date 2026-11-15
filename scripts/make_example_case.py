@@ -6,6 +6,7 @@ The case is produced by the real tools. Afterwards machine-specific absolute pat
 placeholders (<repo>, ~/.detection-workbench/cases/...) so no local paths are committed. Hashes in the case
 refer to the input files, not the JSON, so they stay valid.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -34,21 +35,34 @@ def build(case_dir: Path) -> Path:
     w.pcap_summary(pcap)
     w.validate_rules(rules_id=rules)
     before = w.run_pcap(pcap, rules_id=rules)
-    f1 = w.add_finding("SID 1000001 (marker in URI) fires once, on the target request: data in packet 6, "
-                       "alert reported on packet 7 (the flush trigger).", [before["run_id"]], [pcap, rules])
+    f1 = w.add_finding(
+        "SID 1000001 (marker in URI) fires once, on the target request: data in packet 6, "
+        "alert reported on packet 7 (the flush trigger).",
+        [before["run_id"]],
+        [pcap, rules],
+    )
     w.update_finding(f1["id"], status="confirmed")
-    t = w.test_tuning(before["run_id"],
-                      {"kind": "event_filter", "sid": 1000003, "type": "limit", "track": "by_src",
-                       "count": 1, "seconds": 60},
-                      "SYN rule fires on every scan packet; volume, not presence, is the noise")
-    w.add_finding(f"SID 1000003 fires {t['counts']['1000003']['before']} times from one scanner; a limit of one "
-                  f"alert per source per minute leaves {t['counts']['1000003']['after']}.",
-                  [before["run_id"], t["after_run"]], [pcap, rules])
+    t = w.test_tuning(
+        before["run_id"],
+        {"kind": "event_filter", "sid": 1000003, "type": "limit", "track": "by_src", "count": 1, "seconds": 60},
+        "SYN rule fires on every scan packet; volume, not presence, is the noise",
+    )
+    w.add_finding(
+        f"SID 1000003 fires {t['counts']['1000003']['before']} times from one scanner; a limit of one "
+        f"alert per source per minute leaves {t['counts']['1000003']['after']}.",
+        [before["run_id"], t["after_run"]],
+        [pcap, rules],
+    )
     # the same noisy rule fixed from inside the rule instead of from the config: a second candidate to compare
-    fixed_rule = ('alert tcp any any -> any any ( msg:"WBTEST any SYN"; flags:S; '
-                  'detection_filter:track by_src,count 5,seconds 60; sid:1000003; rev:2; )')
-    t2 = w.test_tuning(before["run_id"], {"kind": "rule_edit", "sid": 1000003, "rule": fixed_rule},
-                       "Same effect from inside the rule, so the fix travels with the rule set instead of the sensor config")
+    fixed_rule = (
+        'alert tcp any any -> any any ( msg:"WBTEST any SYN"; flags:S; '
+        "detection_filter:track by_src,count 5,seconds 60; sid:1000003; rev:2; )"
+    )
+    t2 = w.test_tuning(
+        before["run_id"],
+        {"kind": "rule_edit", "sid": 1000003, "rule": fixed_rule},
+        "Same effect from inside the rule, so the fix travels with the rule set instead of the sensor config",
+    )
     w.update_decision(t["decision_id"], "rejected")
     w.update_decision(t2["decision_id"], "accepted")
     w.export_tuning(path_prefix=str(w.store.root / "exports" / "accepted-tuning"))
@@ -69,8 +83,10 @@ def build(case_dir: Path) -> Path:
             f"travels with the rule set. The accepted rule is in `exports/accepted-tuning.rules`. The rule check notes that "
             f"sid 1000003 has no content to build a fast pattern on; that was already true before the edit.\n\n"
             f"**Limits.** One 13-packet synthetic capture. It shows the change works mechanically, not that a limit of "
-            f"one per minute is right for production traffic."),
-        status="closed")
+            f"one per minute is right for production traffic."
+        ),
+        status="closed",
+    )
     w.export_case("markdown")
     w.export_case("timesketch_csv")
     return w.store.root
@@ -98,7 +114,10 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as td:
         built = build(Path(td) / "cases")
         old_id = built.name
-        scrub(built, [(str(built), f"~/.detection-workbench/cases/{STABLE_ID}"), (str(ROOT), "<repo>"), (old_id, STABLE_ID)])
+        scrub(
+            built,
+            [(str(built), f"~/.detection-workbench/cases/{STABLE_ID}"), (str(ROOT), "<repo>"), (old_id, STABLE_ID)],
+        )
         (built / ".lock").unlink(missing_ok=True)
         for p in sorted(built.rglob("*"), key=lambda x: len(x.parts), reverse=True):
             if old_id in p.name:

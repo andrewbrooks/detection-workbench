@@ -5,6 +5,7 @@ These helpers open the file once (never following a symlink in the final compone
 descriptor that it is a regular file inside the allowed roots, and hash the very bytes they copy or return. The
 caller then works from that copy, so nothing can change between the check and the use.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -27,6 +28,7 @@ def _fd_path(fd: int) -> Path | None:
         if os.path.isdir("/proc/self/fd"):
             return Path(os.readlink(f"/proc/self/fd/{fd}"))
         import fcntl  # macOS
+
         get_path = getattr(fcntl, "F_GETPATH", None)
         if get_path is not None:
             return Path(fcntl.fcntl(fd, get_path, b"\0" * 1024).split(b"\0", 1)[0].decode())
@@ -40,8 +42,7 @@ def _open_checked(path: str | os.PathLike, roots: list[Path], max_bytes: int) ->
     try:
         fd = os.open(path, flags)
     except OSError as e:
-        raise PathError(f"cannot open evidence {Path(path).name!r}: {e.strerror} "
-                        "(symlinks are not followed)") from None
+        raise PathError(f"cannot open evidence {Path(path).name!r}: {e.strerror} (symlinks are not followed)") from None
     try:
         st = os.fstat(fd)
         if not stat.S_ISREG(st.st_mode):
@@ -67,8 +68,10 @@ def _stream(fd: int, expected_sha256: str, max_bytes: int, sink, name: str) -> i
             h.update(chunk)
             sink(chunk)
     if h.hexdigest() != expected_sha256:
-        raise EvidenceChanged(f"evidence {name!r} changed since it was registered (hash mismatch); "
-                              "register it again if the change is intended")
+        raise EvidenceChanged(
+            f"evidence {name!r} changed since it was registered (hash mismatch); "
+            "register it again if the change is intended"
+        )
     return total
 
 
@@ -103,7 +106,9 @@ def read_checked(src: str | os.PathLike, roots: list[Path], max_bytes: int) -> b
         return f.read(max_bytes)
 
 
-def fingerprint(src: str | os.PathLike, roots: list[Path], max_bytes: int, head_bytes: int = 65536) -> tuple[str, int, bytes]:
+def fingerprint(
+    src: str | os.PathLike, roots: list[Path], max_bytes: int, head_bytes: int = 65536
+) -> tuple[str, int, bytes]:
     """(sha256, size, first bytes) of a file read once through the checked open, for registering evidence."""
     fd = _open_checked(src, roots, max_bytes)
     h, total, head = hashlib.sha256(), 0, b""
@@ -116,4 +121,3 @@ def fingerprint(src: str | os.PathLike, roots: list[Path], max_bytes: int, head_
                 head += chunk[: head_bytes - len(head)]
             h.update(chunk)
     return h.hexdigest(), total, head
-

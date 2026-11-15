@@ -2,6 +2,7 @@
 
 Usage: uv run scripts/record_snort_outputs.py   (needs Docker and the pinned image)
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -18,13 +19,28 @@ S = Config().snort
 
 
 def docker(args: list[str], workdir: Path) -> subprocess.CompletedProcess:
-    cmd = ["docker", "run", "--rm", "--network", "none", "-v", f"{FIX}:/fix:ro", "-v", f"{workdir}:/work",
-           "--user", "1000:1000", "--entrypoint", S.docker_binary, S.docker_image] + args
+    cmd = [
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "-v",
+        f"{FIX}:/fix:ro",
+        "-v",
+        f"{workdir}:/work",
+        "--user",
+        "1000:1000",
+        "--entrypoint",
+        S.docker_binary,
+        S.docker_image,
+    ] + args
     return subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
 
 def main() -> int:
     import tempfile
+
     REC.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
@@ -42,8 +58,26 @@ def main() -> int:
             (td / "out").chmod(0o777)
             for f in (td / "out").glob("*"):
                 f.unlink()
-            r = docker(["-q", "-c", "/work/prof.lua", "-R", f"/fix/rules/{rules}.rules", "-r", f"/fix/pcaps/{pcap}.pcap",
-                        "--daq", "pcap", "--daq-mode", "read-file", "-A", "alert_json", "-l", "/work/out"], td)
+            r = docker(
+                [
+                    "-q",
+                    "-c",
+                    "/work/prof.lua",
+                    "-R",
+                    f"/fix/rules/{rules}.rules",
+                    "-r",
+                    f"/fix/pcaps/{pcap}.pcap",
+                    "--daq",
+                    "pcap",
+                    "--daq-mode",
+                    "read-file",
+                    "-A",
+                    "alert_json",
+                    "-l",
+                    "/work/out",
+                ],
+                td,
+            )
             if r.returncode:
                 print(pcap, "failed:", r.stderr[-500:], file=sys.stderr)
                 return 1

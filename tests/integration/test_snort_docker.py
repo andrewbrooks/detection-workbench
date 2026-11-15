@@ -1,4 +1,5 @@
 """Opt-in: needs Docker (or native Snort 3). Run: DW_INTEGRATION=1 uv run pytest -q tests/integration"""
+
 import os
 import subprocess
 import time
@@ -105,7 +106,9 @@ def test_noisy_tuning_loop_with_before_after(wb):
     top = wb.suggest_tuning_targets(r["run_id"])["targets"][0]
     assert top["sid"] == 1000042 and top["top_source"] == "10.0.4.20" and top["top_source_share"] > 0.9
     before = counts(r)[1000042]
-    t = wb.test_tuning(r["run_id"], {"kind": "suppress", "sid": 1000042, "track": "by_src", "ip": "10.0.4.20"}, "known scanner")
+    t = wb.test_tuning(
+        r["run_id"], {"kind": "suppress", "sid": 1000042, "track": "by_src", "ip": "10.0.4.20"}, "known scanner"
+    )
     c = t["counts"]
     assert t["applied"] and c["1000042"]["before"] == before and 0 < c["1000042"]["after"] < before - 250
     assert c["1000001"] == {"before": 1, "after": 1} and t["other_sids_changed"] == []
@@ -121,7 +124,9 @@ def test_rule_edit_tuning(wb):
     new = 'alert http any any -> any any ( msg:"LOCAL noisy GET index"; flow:to_server,established; http_uri; content:"/index",fast_pattern; sid:1000042; rev:2; classtype:web-application-activity; )'
     t = wb.test_tuning(r["run_id"], {"kind": "rule_edit", "sid": 1000042, "rule": new}, "match only /index")
     assert t["applied"] and 0 < t["counts"]["1000042"]["after"] < 20
-    bad = wb.test_tuning(r["run_id"], {"kind": "rule_edit", "sid": 1000042, "rule": new.replace("content:", "contnet:")}, "typo")
+    bad = wb.test_tuning(
+        r["run_id"], {"kind": "rule_edit", "sid": 1000042, "rule": new.replace("content:", "contnet:")}, "typo"
+    )
     assert bad["applied"] is False and not bad["validation"]["ok"]
 
 
@@ -187,6 +192,7 @@ def test_docker_timeout_kills_container(wb, tmp_path):
 
 def test_no_live_capture_surface(wb):
     import inspect
+
     for name in ("run_pcap", "validate_rules", "test_tuning"):
         params = inspect.signature(getattr(wb, name)).parameters
         assert not {"interface", "iface", "daq", "inline", "lua", "args", "argv"} & set(params)
@@ -221,7 +227,10 @@ def wb_runs(w):
 def test_include_directive_is_refused_before_anything_runs(wb):
     before = len(wb.store.list_runs())
     with pytest.raises(WorkbenchError, match="include"):
-        wb.validate_rules(rules_text="include /etc/passwd\n" + 'alert tcp any any -> any any ( msg:"x"; content:"a"; sid:1000001; rev:1; )')
+        wb.validate_rules(
+            rules_text="include /etc/passwd\n"
+            + 'alert tcp any any -> any any ( msg:"x"; content:"a"; sid:1000001; rev:1; )'
+        )
     r = wb.run_pcap(ev(wb, "pcaps/http_marker.pcap"), rules_id=ev(wb, "rules/good.rules"))
     with pytest.raises(WorkbenchError, match="include"):
         wb.test_tuning(r["run_id"], {"kind": "rule_edit", "sid": 1000001, "rule": "include /etc/passwd"}, "x")
@@ -237,6 +246,7 @@ def test_multi_line_rule_edit_is_refused(wb):
 
 def test_awkward_and_hostile_evidence_names_work_because_the_engine_sees_a_safe_copy(tmp_path):
     import shutil
+
     root = tmp_path / "in"
     root.mkdir()
     w = Workbench(Config(case_dir=tmp_path / "cases", allowed_roots=(root.resolve(),)))
@@ -244,7 +254,7 @@ def test_awkward_and_hostile_evidence_names_work_because_the_engine_sees_a_safe_
         pytest.skip("docker backend only")
     w.create_case("names")
     rid = w.register_evidence(shutil.copy(FIX / "rules/good.rules", root / "good.rules"))["id"]
-    for name in ("my capture (1).pcap", "x:etc:rw,y\"z.pcap"):  # spaces/brackets, and characters that break `-v` specs
+    for name in ("my capture (1).pcap", 'x:etc:rw,y"z.pcap'):  # spaces/brackets, and characters that break `-v` specs
         cap = shutil.copy(FIX / "pcaps/http_marker.pcap", root / name)
         r = w.run_pcap(w.register_evidence(cap)["id"], rules_id=rid)
         assert r["status"] == "ok" and r["total_alerts"] == 9, name
@@ -252,6 +262,7 @@ def test_awkward_and_hostile_evidence_names_work_because_the_engine_sees_a_safe_
 
 def test_evidence_changed_after_registration_is_refused_and_staged_copies_are_removed(tmp_path):
     import shutil
+
     root = tmp_path / "in"
     root.mkdir()
     w = Workbench(Config(case_dir=tmp_path / "cases", allowed_roots=(root.resolve(),)))
@@ -266,7 +277,11 @@ def test_evidence_changed_after_registration_is_refused_and_staged_copies_are_re
     assert not list((w.store.root / "runs" / ok["run_id"]).glob("input-*")), "staged copy must be deleted after the run"
     n = len(w.store.list_runs())
     Path(cap).write_bytes(Path(cap).read_bytes() + b"\0")  # modified after registration
-    for call in (lambda: w.run_pcap(pc, rules_id=rules), lambda: w.pcap_summary(pc), lambda: w.explain_alert(ok["run_id"], 0)):
+    for call in (
+        lambda: w.run_pcap(pc, rules_id=rules),
+        lambda: w.pcap_summary(pc),
+        lambda: w.explain_alert(ok["run_id"], 0),
+    ):
         with pytest.raises(WorkbenchError, match="changed since it was registered"):
             call()
     assert len(w.store.list_runs()) == n  # nothing recorded for the refused attempts
@@ -280,9 +295,13 @@ def test_snort2_conf_include_lines_are_not_followed(tmp_path):
     if not w.engine.version().available or not w.engine.has_snort2lua():
         pytest.skip("snort2lua unavailable")
     w.create_case("includes")
-    (root / "extra.rules").write_text('alert tcp any any -> any 80 (msg:"SHOULD-NOT-APPEAR"; content:"zzz"; sid:1000200; rev:1;)\n')
+    (root / "extra.rules").write_text(
+        'alert tcp any any -> any 80 (msg:"SHOULD-NOT-APPEAR"; content:"zzz"; sid:1000200; rev:1;)\n'
+    )
     conf = root / "old.conf"
-    conf.write_text(f"var HOME_NET any\ninclude {root / 'extra.rules'}\nalert tcp any any -> any 80 (msg:\"direct\"; content:\"abc\"; sid:1000201; rev:1;)\n")
+    conf.write_text(
+        f'var HOME_NET any\ninclude {root / "extra.rules"}\nalert tcp any any -> any 80 (msg:"direct"; content:"abc"; sid:1000201; rev:1;)\n'
+    )
     out = w.convert_snort2(w.register_evidence(str(conf), type="log")["id"])
     # the include is not followed: its rule is absent, the directly written rule converts, and the notes name the skipped line
     assert out["status"] == "partial"
@@ -298,8 +317,27 @@ def test_image_starts_snort_as_any_host_user_not_just_the_image_owner(wb):
     image, s = wb.engine._image, wb.cfg.snort
     assert image and image.startswith("detection-workbench/snort3:")
     for uid in ("1000:1000", "1001:127", "4242:4242", "65534:65534"):
-        r = subprocess.run([docker_bin(), "run", "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL", "--user", uid,
-                            "--entrypoint", s.docker_binary, image, "-V"], capture_output=True, text=True, timeout=60)
+        r = subprocess.run(
+            [
+                docker_bin(),
+                "run",
+                "--rm",
+                "--network",
+                "none",
+                "--read-only",
+                "--cap-drop",
+                "ALL",
+                "--user",
+                uid,
+                "--entrypoint",
+                s.docker_binary,
+                image,
+                "-V",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
         assert r.returncode == 0 and "Version 3." in r.stdout + r.stderr, (uid, r.stderr[-200:])
 
 
@@ -326,17 +364,26 @@ def test_accepted_tuning_exports_text_that_snort_accepts_and_that_reproduces_the
     pc = w.register_evidence(shutil.copy(FIX / "pcaps/noisy.pcap", root / "noisy.pcap"))["id"]
     rules = w.register_evidence(shutil.copy(FIX / "rules/noisy.rules", root / "noisy.rules"))["id"]
     base = w.run_pcap(pc, rules_id=rules)
-    new = ('alert http any any -> any any ( msg:"LOCAL noisy GET index"; flow:to_server,established; http_uri; '
-           'content:"/index",fast_pattern; sid:1000042; rev:2; classtype:web-application-activity; )')
+    new = (
+        'alert http any any -> any any ( msg:"LOCAL noisy GET index"; flow:to_server,established; http_uri; '
+        'content:"/index",fast_pattern; sid:1000042; rev:2; classtype:web-application-activity; )'
+    )
 
     edit = w.test_tuning(base["run_id"], {"kind": "rule_edit", "sid": 1000042, "rule": new}, "match only /index")
     review = edit["review"]  # what the model sees right after proposing the change
     assert review["kind"] == "rule_edit" and "- rev:1" in review["diff"] and "+ rev:2" in review["diff"]
     assert '+ content:"/index",fast_pattern' in review["diff"] and all(c["level"] == "ok" for c in review["checks"])
-    sup = w.test_tuning(base["run_id"], {"kind": "suppress", "sid": 1000042, "track": "by_src", "ip": "10.0.4.20"}, "scanner")
-    assert "suppress = { { gid = 1, sid = 1000042, track = 'by_src', ip = '10.0.4.20' } }" in sup["review"]["config_entry"]
-    flt = w.test_tuning(base["run_id"], {"kind": "event_filter", "sid": 1000042, "type": "limit", "track": "by_src",
-                                         "count": 1, "seconds": 60}, "limit")
+    sup = w.test_tuning(
+        base["run_id"], {"kind": "suppress", "sid": 1000042, "track": "by_src", "ip": "10.0.4.20"}, "scanner"
+    )
+    assert (
+        "suppress = { { gid = 1, sid = 1000042, track = 'by_src', ip = '10.0.4.20' } }" in sup["review"]["config_entry"]
+    )
+    flt = w.test_tuning(
+        base["run_id"],
+        {"kind": "event_filter", "sid": 1000042, "type": "limit", "track": "by_src", "count": 1, "seconds": 60},
+        "limit",
+    )
 
     with pytest.raises(WorkbenchError, match="not accepted yet"):
         w.export_tuning([edit["decision_id"]])
@@ -362,10 +409,33 @@ def test_accepted_tuning_exports_text_that_snort_accepts_and_that_reproduces_the
         f.chmod(0o644)
     cfg_dir.chmod(0o755)
     s = w.cfg.snort
-    r = subprocess.run([docker_bin(), "run", "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL",
-                        "--user", f"{os.getuid()}:{os.getgid()}", "-v", f"{cfg_dir}:/chk:ro", "--entrypoint", s.docker_binary,
-                        w.engine._image, "-T", "-c", "/chk/check.lua", "-R", "/chk/empty.rules"],
-                       capture_output=True, text=True, timeout=120)
+    r = subprocess.run(
+        [
+            docker_bin(),
+            "run",
+            "--rm",
+            "--network",
+            "none",
+            "--read-only",
+            "--cap-drop",
+            "ALL",
+            "--user",
+            f"{os.getuid()}:{os.getgid()}",
+            "-v",
+            f"{cfg_dir}:/chk:ro",
+            "--entrypoint",
+            s.docker_binary,
+            w.engine._image,
+            "-T",
+            "-c",
+            "/chk/check.lua",
+            "-R",
+            "/chk/empty.rules",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
     assert r.returncode == 0 and "successfully validated" in r.stdout + r.stderr, (r.stdout + r.stderr)[-400:]
 
     md = Path(w.export_case("markdown")["path"]).read_text()
@@ -380,10 +450,17 @@ def test_writeup_example_responses_have_the_fields_the_tools_return(tmp_path):
     import re
 
     text = (Path(__file__).parents[2] / "docs" / "writeup.md").read_text()
-    section = text[text.index("## Example output"):text.index('## What "proved" means here')]
+    section = text[text.index("## Example output") : text.index('## What "proved" means here')]
     docs = {}
-    for tool in ("pcap_summary", "validate_rules", "run_pcap", "suggest_tuning_targets", "explain_alert", "test_tuning"):
-        m = re.search(r"```json\n(.*?)\n```", section[section.index(f"### `{tool}`"):], re.S)
+    for tool in (
+        "pcap_summary",
+        "validate_rules",
+        "run_pcap",
+        "suggest_tuning_targets",
+        "explain_alert",
+        "test_tuning",
+    ):
+        m = re.search(r"```json\n(.*?)\n```", section[section.index(f"### `{tool}`") :], re.S)
         docs[tool] = json.loads(m.group(1))
 
     w = Workbench(Config(case_dir=tmp_path / "cases", allowed_roots=(FIX.resolve(),)))
@@ -398,11 +475,15 @@ def test_writeup_example_responses_have_the_fields_the_tools_return(tmp_path):
     hm = w.run_pcap(ev(w, "pcaps/http_marker.pcap"), rules_id=ev(w, "rules/good.rules"))
     idx = next(a["alert_idx"] for a in w.get_alerts(hm["run_id"], sid=1000001)["alerts"])
     real["explain_alert"] = w.explain_alert(hm["run_id"], idx)
-    real["test_tuning"] = w.test_tuning(run["run_id"], {"kind": "suppress", "sid": 1000042, "track": "by_src", "ip": "10.0.4.20"}, "x")
+    real["test_tuning"] = w.test_tuning(
+        run["run_id"], {"kind": "suppress", "sid": 1000042, "track": "by_src", "ip": "10.0.4.20"}, "x"
+    )
 
     omitted = {"validate_rules": {"lint"}, "explain_alert": {"inspector_buffer"}}  # the text above each block says so
     for tool, doc in docs.items():
         want, have = set(real[tool]), set(doc) | omitted.get(tool, set())
-        assert want == have, f"{tool}: documented fields differ from the real response: missing {sorted(want - have)}, extra {sorted(have - want)}"
+        assert want == have, (
+            f"{tool}: documented fields differ from the real response: missing {sorted(want - have)}, extra {sorted(have - want)}"
+        )
     assert set(docs["run_pcap"]["stream_caveats"]) == set(real["run_pcap"]["stream_caveats"])
     assert set(docs["test_tuning"]["review"]) == set(real["test_tuning"]["review"])

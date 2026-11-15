@@ -1,12 +1,19 @@
 """Markdown docs: relative links and in-page anchors must resolve."""
+
 import re
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).parents[2]
-DOCS = [ROOT / "README.md", ROOT / "CONTRIBUTING.md", ROOT / "SECURITY.md", *sorted((ROOT / "docs").glob("*.md")), ROOT / "docs/examples/README.md",
-        ROOT / "tests/fixtures/README.md"]
+DOCS = [
+    ROOT / "README.md",
+    ROOT / "CONTRIBUTING.md",
+    ROOT / "SECURITY.md",
+    *sorted((ROOT / "docs").glob("*.md")),
+    ROOT / "docs/examples/README.md",
+    ROOT / "tests/fixtures/README.md",
+]
 
 
 def slug(heading: str) -> str:
@@ -36,13 +43,23 @@ def test_links_resolve(doc):
 
 
 def test_every_doc_is_checked():
-    on_disk = {p for p in [ROOT / "README.md", ROOT / "CONTRIBUTING.md", ROOT / "SECURITY.md", *(ROOT / "docs").rglob("*.md"), *(ROOT / "tests/fixtures").glob("*.md")]
-               if "examples/case" not in str(p)}
+    on_disk = {
+        p
+        for p in [
+            ROOT / "README.md",
+            ROOT / "CONTRIBUTING.md",
+            ROOT / "SECURITY.md",
+            *(ROOT / "docs").rglob("*.md"),
+            *(ROOT / "tests/fixtures").glob("*.md"),
+        ]
+        if "examples/case" not in str(p)
+    }
     assert on_disk == set(DOCS)
 
 
 def test_every_json_block_in_the_writeup_is_valid_json():
     import json
+
     text = (ROOT / "docs" / "writeup.md").read_text()
     blocks = re.findall(r"```json\n(.*?)\n```", text, re.S)
     assert len(blocks) >= 6

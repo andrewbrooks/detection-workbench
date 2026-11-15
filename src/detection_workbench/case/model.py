@@ -1,4 +1,5 @@
 """Case file schema constants and helpers (see docs/case-schema.md)."""
+
 from __future__ import annotations
 
 import hashlib
@@ -18,11 +19,15 @@ EVIDENCE_TYPES = ("pcap", "pcapng", "rules", "log")
 ID_PREFIXES = {"evidence": "e", "run": "r", "finding": "f", "decision": "d", "note": "n"}
 
 _PCAP_MAGICS = {
-    bytes.fromhex("a1b2c3d4"), bytes.fromhex("d4c3b2a1"),
-    bytes.fromhex("a1b23c4d"), bytes.fromhex("4d3cb2a1"),
+    bytes.fromhex("a1b2c3d4"),
+    bytes.fromhex("d4c3b2a1"),
+    bytes.fromhex("a1b23c4d"),
+    bytes.fromhex("4d3cb2a1"),
 }
 _PCAPNG_MAGIC = bytes.fromhex("0a0d0d0a")
-_RULE_HEADER = re.compile(rb"^\s*(#\s*)?(alert|log|pass|drop|reject|block|react|rewrite)\s+\w+\s+\S+\s+\S+\s+(->|<>)", re.M)
+_RULE_HEADER = re.compile(
+    rb"^\s*(#\s*)?(alert|log|pass|drop|reject|block|react|rewrite)\s+\w+\s+\S+\s+\S+\s+(->|<>)", re.M
+)
 
 
 class SchemaError(ValueError):

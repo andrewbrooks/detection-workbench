@@ -3,6 +3,7 @@
 No real traffic and no malware: every payload is invented. Packet roles are documented in
 tests/fixtures/README.md so tests can assert exact packet numbers.
 """
+
 from __future__ import annotations
 
 import random
@@ -95,11 +96,21 @@ def noisy():
     port = 20000
     for i in range(300):
         port += 1
-        http_exchange(cap, ("10.0.4.20", port), s, req=b"GET /probe/%d HTTP/1.1\r\nHost: app.example.test\r\nUser-Agent: scanner/2.0\r\n\r\n" % i)
+        http_exchange(
+            cap,
+            ("10.0.4.20", port),
+            s,
+            req=b"GET /probe/%d HTTP/1.1\r\nHost: app.example.test\r\nUser-Agent: scanner/2.0\r\n\r\n" % i,
+        )
     for host in range(31, 36):
         for j in range(rng.randint(2, 4)):
             port += 1
-            http_exchange(cap, (f"10.0.4.{host}", port), s, req=b"GET /index%d.html HTTP/1.1\r\nHost: app.example.test\r\nUser-Agent: Mozilla/5.0\r\n\r\n" % j)
+            http_exchange(
+                cap,
+                (f"10.0.4.{host}", port),
+                s,
+                req=b"GET /index%d.html HTTP/1.1\r\nHost: app.example.test\r\nUser-Agent: Mozilla/5.0\r\n\r\n" % j,
+            )
     port += 1
     http_exchange(cap, ("10.0.4.77", port), s)
     for k in range(20):

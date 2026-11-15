@@ -1,4 +1,5 @@
 """Path control: reads only from allowed roots, writes only where told, never to evidence."""
+
 from __future__ import annotations
 
 import os
@@ -33,8 +34,9 @@ def resolve_read(path: str | os.PathLike, roots: list[Path], max_bytes: int | No
     return p
 
 
-def resolve_write(path: str | os.PathLike, roots: list[Path], overwrite: bool = False,
-                  protected: set[Path] | None = None) -> Path:
+def resolve_write(
+    path: str | os.PathLike, roots: list[Path], overwrite: bool = False, protected: set[Path] | None = None
+) -> Path:
     """Vet a user-named output path. Existing files are only replaced when `overwrite` is set,
     and never when they are registered evidence (`protected`)."""
     if "\0" in str(path):
@@ -65,7 +67,13 @@ def write_text_safely(target: Path, text: str, overwrite: bool = False) -> None:
     """Write a text file without following a symlink placed at `target` after it was vetted.
 
     New files are created exclusively; with `overwrite` an existing regular file is truncated in place."""
-    flags = os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0) | (os.O_TRUNC if overwrite else os.O_EXCL)
+    flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_NOFOLLOW
+        | getattr(os, "O_CLOEXEC", 0)
+        | (os.O_TRUNC if overwrite else os.O_EXCL)
+    )
     try:
         fd = os.open(target, flags, 0o666)  # the umask decides the final mode
     except FileExistsError:
@@ -74,4 +82,3 @@ def write_text_safely(target: Path, text: str, overwrite: bool = False) -> None:
         raise PathError(f"cannot write {Path(target).name!r}: {e.strerror} (symlinks are not followed)") from None
     with os.fdopen(fd, "w") as f:
         f.write(text)
-

@@ -9,14 +9,18 @@ Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/). Docker is needed onl
 example/demo scripts.
 
 ```bash
-uv sync
+make setup          # uv sync --locked, and enables the pre-commit hook
 docker pull ciscotalos/snort3@sha256:f15f714fd61ade114b1039687dd43352cae26cd6401b89f2b03404e0d21e322f
 
-uv run pytest -q                                       # unit and parser tests, no Snort needed
-DW_INTEGRATION=1 uv run pytest -q tests/integration    # needs Docker (or native Snort 3)
-uv run ruff check src tests scripts                    # lint
-uv run scripts/demo_noisy_rule.py                      # the whole loop through a real MCP session
+make check          # lint and format check, unit and parser tests (no Snort needed)
+make integration    # needs Docker (or native Snort 3)
+make help           # every task, including format, secrets, audit-deps and build
+uv run scripts/demo_noisy_rule.py   # the whole loop through a real MCP session
 ```
+
+CI runs the same checks as `make check` on Python 3.12 and 3.14, plus the integration tests, a secret scan of the full
+history and a dependency audit. The pre-commit hook scans staged changes for secrets (`gitleaks`) and checks lint and
+formatting.
 
 More commands, the code layout and current status are in [docs/development.md](docs/development.md).
 

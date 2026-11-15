@@ -1,4 +1,5 @@
 """Workbench service: every MCP tool is a method here, so the logic is testable without MCP."""
+
 from __future__ import annotations
 
 import contextlib
@@ -27,10 +28,12 @@ from .runner.recorder import run_recorded
 from .safety.paths import PathError, resolve_read, resolve_write, write_text_safely
 from .safety.verified import copy_verified, fingerprint, read_checked, read_verified
 
-MAX_SID_ROWS = 100       # SIDs listed in any one tool response; the full lists stay in the run's results files
+MAX_SID_ROWS = 100  # SIDs listed in any one tool response; the full lists stay in the run's results files
 MAX_DECISION_COUNTS = 200  # per-SID rows stored with a tuning decision before unchanged ones are trimmed
-OFFLINE_REFUSAL = ("The workbench is offline-only: it reads registered pcap files and never captures from an "
-                   "interface, runs inline, or touches a live sensor.")
+OFFLINE_REFUSAL = (
+    "The workbench is offline-only: it reads registered pcap files and never captures from an "
+    "interface, runs inline, or touches a live sensor."
+)
 
 
 class WorkbenchError(ValueError):
@@ -70,7 +73,9 @@ class Workbench:
         """Copy evidence into `dest_dir`, verifying its hash while reading, and return the copy. Engines work from this
         copy, so the file cannot be swapped between the check and the use. Callers delete `dest_dir` afterwards."""
         dest = dest_dir / name
-        self._wrap(copy_verified, ev["path"], dest, ev["sha256"], self.roots, max_bytes or self.cfg.limits.max_input_bytes)
+        self._wrap(
+            copy_verified, ev["path"], dest, ev["sha256"], self.roots, max_bytes or self.cfg.limits.max_input_bytes
+        )
         return dest
 
     @contextlib.contextmanager
@@ -96,8 +101,11 @@ class Workbench:
             data = self._wrap(read_verified, ev["path"], ev["sha256"], self.roots, self.cfg.limits.max_rules_bytes)
             text = data.decode(errors="replace")
             self._no_includes(text)
-            return (text, {"source": "evidence", "evidence_id": rules_id},
-                    [{"evidence_id": rules_id, "sha256": ev["sha256"], "mount": "cfg/rules.rules"}])
+            return (
+                text,
+                {"source": "evidence", "evidence_id": rules_id},
+                [{"evidence_id": rules_id, "sha256": ev["sha256"], "mount": "cfg/rules.rules"}],
+            )
         self._no_includes(rules_text)
         return rules_text, {"source": "inline"}, []
 
@@ -107,7 +115,8 @@ class Workbench:
         if lines:
             raise WorkbenchError(
                 f"Rule sets may not contain 'include' directives (line {lines[0]}): Snort would open the named file. "
-                "Paste the rules into one self-contained file or rules_text.")
+                "Paste the rules into one self-contained file or rules_text."
+            )
 
     def _tag_rules(self, res: EngineResult, ref: dict) -> None:
         if res.rules is not None:
@@ -127,25 +136,36 @@ class Workbench:
 
     def open_case(self, case_id: str) -> dict:
         self.store = self._wrap(CaseStore.open, self.cfg.case_dir, case_id)
-        return {"case_id": case_id, "active": True, **{k: v for k, v in self.store.summary(3).items()
-                                                      if k in ("title", "status", "recent_runs")}}
+        return {
+            "case_id": case_id,
+            "active": True,
+            **{k: v for k, v in self.store.summary(3).items() if k in ("title", "status", "recent_runs")},
+        }
 
     def list_cases(self) -> dict:
-        return {"cases": CaseStore.list_cases(self.cfg.case_dir), "case_dir": str(self.cfg.case_dir),
-                "active": self.store.root.name if self.store else None}
+        return {
+            "cases": CaseStore.list_cases(self.cfg.case_dir),
+            "case_dir": str(self.cfg.case_dir),
+            "active": self.store.root.name if self.store else None,
+        }
 
     def register_evidence(self, path: str, type: str | None = None, label: dict | None = None) -> dict:
         store = self._case()
         if type is not None and type not in EVIDENCE_TYPES:
             raise WorkbenchError(f"type must be one of {list(EVIDENCE_TYPES)} (or omitted to auto-detect)")
         if label is not None:
-            ok = (isinstance(label, dict) and set(label) <= {"class", "technique"}
-                  and all(isinstance(v, str) and len(v) <= 100 for v in label.values())
-                  and label.get("class") in ("malicious", "benign"))
+            ok = (
+                isinstance(label, dict)
+                and set(label) <= {"class", "technique"}
+                and all(isinstance(v, str) and len(v) <= 100 for v in label.values())
+                and label.get("class") in ("malicious", "benign")
+            )
             if not ok:
-                raise WorkbenchError("label must look like {\"class\": \"malicious\"|\"benign\", \"technique\": \"T1059.001\"}")
+                raise WorkbenchError('label must look like {"class": "malicious"|"benign", "technique": "T1059.001"}')
         p = self._wrap(resolve_read, path, self.roots, self.cfg.limits.max_input_bytes)
-        fp = self._wrap(fingerprint, p, self.roots, self.cfg.limits.max_input_bytes)  # hashed from the open file, not by path
+        fp = self._wrap(
+            fingerprint, p, self.roots, self.cfg.limits.max_input_bytes
+        )  # hashed from the open file, not by path
         return self._wrap(store.register_evidence, p, label, type, fp)
 
     def add_finding(self, statement: str, run_ids: list[str], evidence_ids: list[str] | None = None) -> dict:
@@ -180,11 +200,14 @@ class Workbench:
         lim = self.cfg.limits
         return {
             "engines": [self.engine.status()],
-            "allowed_roots": [str(r) for r in self.cfg.allowed_roots], "case_dir": str(self.cfg.case_dir),
-            "limits": vars(lim), "offline_only": True,
+            "allowed_roots": [str(r) for r in self.cfg.allowed_roots],
+            "case_dir": str(self.cfg.case_dir),
+            "limits": vars(lim),
+            "offline_only": True,
             "active_case": self.store.root.name if self.store else None,
-            "hint": None if self.cfg.allowed_roots else
-            "allowed_roots is empty: only files inside the case directory can be registered. Add directories in config.toml.",
+            "hint": None
+            if self.cfg.allowed_roots
+            else "allowed_roots is empty: only files inside the case directory can be registered. Add directories in config.toml.",
         }
 
     # ---- pcap summary ------------------------------------------------------------------
@@ -200,12 +223,29 @@ class Workbench:
             raise
         (run_dir / "results" / "summary.json").write_text(json.dumps(data, indent=2) + "\n")
         t = now()
-        store.record_run({"id": rid, "kind": "summary", "engine": "dpkt", "engine_version": None, "backend": "native",
-                          "argv": [], "inputs": [{"evidence_id": evidence_id, "sha256": ev["sha256"], "mount": "pcap"}],
-                          "rules": None, "config": None, "started": t, "finished": t, "duration_s": 0.0,
-                          "exit_code": 0, "timed_out": False, "status": "ok", "error_excerpt": "",
-                          "results": {"summary": "results/summary.json"}, "totals": {"packets": data["packets"]},
-                          "parent_run": None})
+        store.record_run(
+            {
+                "id": rid,
+                "kind": "summary",
+                "engine": "dpkt",
+                "engine_version": None,
+                "backend": "native",
+                "argv": [],
+                "inputs": [{"evidence_id": evidence_id, "sha256": ev["sha256"], "mount": "pcap"}],
+                "rules": None,
+                "config": None,
+                "started": t,
+                "finished": t,
+                "duration_s": 0.0,
+                "exit_code": 0,
+                "timed_out": False,
+                "status": "ok",
+                "error_excerpt": "",
+                "results": {"summary": "results/summary.json"},
+                "totals": {"packets": data["packets"]},
+                "parent_run": None,
+            }
+        )
         return {"run_id": rid, "evidence_id": evidence_id, **data}
 
     # ---- validate / run ------------------------------------------------------------------
@@ -213,6 +253,7 @@ class Workbench:
         store = self._case()
         self._engine_ready()
         text, ref, inputs = self._rules(rules_id, rules_text)
+
         def work(ctx):
             res = self.engine.validate(ctx, text)
             self._tag_rules(res, ref)
@@ -224,8 +265,16 @@ class Workbench:
             out["error_excerpt"] = res.error_excerpt
         return out
 
-    def _do_run(self, kind: str, pcap_id: str, text: str, ref: dict, rinputs: list[dict], options: dict,
-                parent: str | None = None) -> tuple[str, EngineResult]:
+    def _do_run(
+        self,
+        kind: str,
+        pcap_id: str,
+        text: str,
+        ref: dict,
+        rinputs: list[dict],
+        options: dict,
+        parent: str | None = None,
+    ) -> tuple[str, EngineResult]:
         store = self._case()
         self._engine_ready()
         ev = self._evidence(pcap_id, {"pcap", "pcapng"})
@@ -244,20 +293,40 @@ class Workbench:
             return {"run_id": rid, "status": res.status, "error_excerpt": res.error_excerpt}
         s, cap = res.payload, self.cfg.limits.max_alerts_returned
         first = self._read_alerts(rid, cap)[0]
-        out = {"run_id": rid, "status": "ok", "total_alerts": s["total"], "truncated_at_parse_limit": s["truncated"],
-               "by_sid": [{k: r[k] for k in ("gid", "sid", "rev", "msg", "count", "distinct_sources",
-                                              "distinct_destinations")} for r in s["by_sid"][:MAX_SID_ROWS]],
-               "sids_total": len(s["by_sid"]),
-               "first_alerts": first, "first_alerts_note": f"first {len(first)} of {s['total']} (use get_alerts to page)",
-               "stream_caveats": s["stream_caveats"]}
+        out = {
+            "run_id": rid,
+            "status": "ok",
+            "total_alerts": s["total"],
+            "truncated_at_parse_limit": s["truncated"],
+            "by_sid": [
+                {k: r[k] for k in ("gid", "sid", "rev", "msg", "count", "distinct_sources", "distinct_destinations")}
+                for r in s["by_sid"][:MAX_SID_ROWS]
+            ],
+            "sids_total": len(s["by_sid"]),
+            "first_alerts": first,
+            "first_alerts_note": f"first {len(first)} of {s['total']} (use get_alerts to page)",
+            "stream_caveats": s["stream_caveats"],
+        }
         return out
 
-    def run_pcap(self, pcap_id: str, rules_id: str | None = None, rules_text: str | None = None,
-                 home_net: str | None = None, external_net: str | None = None, flush_one_sided: bool = False,
-                 profile: bool = False) -> dict:
+    def run_pcap(
+        self,
+        pcap_id: str,
+        rules_id: str | None = None,
+        rules_text: str | None = None,
+        home_net: str | None = None,
+        external_net: str | None = None,
+        flush_one_sided: bool = False,
+        profile: bool = False,
+    ) -> dict:
         text, ref, rinputs = self._rules(rules_id, rules_text)
-        opts = {"home_net": home_net, "external_net": external_net, "flush_one_sided": flush_one_sided,
-                "profile": profile, "filters": []}
+        opts = {
+            "home_net": home_net,
+            "external_net": external_net,
+            "flush_one_sided": flush_one_sided,
+            "profile": profile,
+            "filters": [],
+        }
         rid, res = self._wrap(self._do_run, "run", pcap_id, text, ref, rinputs, opts)
         return self._run_payload(rid, res)
 
@@ -278,8 +347,17 @@ class Workbench:
                 if line.strip():
                     yield json.loads(line)
 
-    def _read_alerts(self, run_id: str, limit: int, offset: int = 0, sid: int | None = None, src: str | None = None,
-                     dst: str | None = None, pkt_from: int | None = None, pkt_to: int | None = None):
+    def _read_alerts(
+        self,
+        run_id: str,
+        limit: int,
+        offset: int = 0,
+        sid: int | None = None,
+        src: str | None = None,
+        dst: str | None = None,
+        pkt_from: int | None = None,
+        pkt_to: int | None = None,
+    ):
         _, f = self._run_files(run_id)
         out, matched = [], 0
         for a in self._iter_jsonl(f):
@@ -299,12 +377,27 @@ class Workbench:
                 out.append(a)
         return out, matched
 
-    def get_alerts(self, run_id: str, sid: int | None = None, src: str | None = None, dst: str | None = None,
-                   pkt_from: int | None = None, pkt_to: int | None = None, offset: int = 0, limit: int = 50) -> dict:
+    def get_alerts(
+        self,
+        run_id: str,
+        sid: int | None = None,
+        src: str | None = None,
+        dst: str | None = None,
+        pkt_from: int | None = None,
+        pkt_to: int | None = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> dict:
         limit = max(1, min(limit, self.cfg.limits.max_alerts_returned))
         alerts, matched = self._read_alerts(run_id, limit, max(0, offset), sid, src, dst, pkt_from, pkt_to)
-        return {"run_id": run_id, "matched": matched, "returned": len(alerts), "offset": offset, "alerts": alerts,
-                "more": matched > offset + len(alerts)}
+        return {
+            "run_id": run_id,
+            "matched": matched,
+            "returned": len(alerts),
+            "offset": offset,
+            "alerts": alerts,
+            "more": matched > offset + len(alerts),
+        }
 
     def explain_alert(self, run_id: str, alert_idx: int) -> dict:
         store = self._case()
@@ -326,7 +419,9 @@ class Workbench:
             return self._wrap(_explain, rule, alert, pcap, self.cfg.limits.payload_display_bytes)
 
     # ---- profiling / tuning ------------------------------------------------------------------
-    def profile_rules(self, pcap_id: str, rules_id: str | None = None, rules_text: str | None = None, top: int = 20) -> dict:
+    def profile_rules(
+        self, pcap_id: str, rules_id: str | None = None, rules_text: str | None = None, top: int = 20
+    ) -> dict:
         text, ref, rinputs = self._rules(rules_id, rules_text)
         opts = {"profile": True, "filters": []}
         rid, res = self._wrap(self._do_run, "profile", pcap_id, text, ref, rinputs, opts)
@@ -334,27 +429,46 @@ class Workbench:
             return {"run_id": rid, "status": res.status, "error_excerpt": res.error_excerpt}
         prof = json.loads((self._case().root / "runs" / rid / res.results["profile"]).read_text())
         msgs = {(1, r.sid): r.msg for r in parse_rules(text)}
-        rows = [{**r, "msg": msgs.get((r["gid"], r["sid"]))} for r in prof["rules"][:max(1, top)]]
-        return {"run_id": rid, "status": "ok", "slowest": rows, "rules_profiled": len(prof["rules"]),
-                "unresolved_rows": prof["unresolved_rows"], "total_alerts": res.payload["total"],
-                "stream_caveats": res.payload["stream_caveats"]}
+        rows = [{**r, "msg": msgs.get((r["gid"], r["sid"]))} for r in prof["rules"][: max(1, top)]]
+        return {
+            "run_id": rid,
+            "status": "ok",
+            "slowest": rows,
+            "rules_profiled": len(prof["rules"]),
+            "unresolved_rows": prof["unresolved_rows"],
+            "total_alerts": res.payload["total"],
+            "stream_caveats": res.payload["stream_caveats"],
+        }
 
     def suggest_tuning_targets(self, run_id: str, top: int = 10) -> dict:
         run, _ = self._run_files(run_id)
         summary = json.loads((self._case().root / "runs" / run_id / run["results"]["summary"]).read_text())
         rows = []
-        for r in summary["by_sid"][:max(1, top)]:
+        for r in summary["by_sid"][: max(1, top)]:
             hint = []
             if r["top_source_share"] >= 0.8 and r["count"] >= 20:
                 hint.append(f"{r['top_source_share']:.0%} of hits come from {r['top_source']}")
             if r["distinct_sources"] >= 20:
                 hint.append("many distinct sources: the rule is probably too broad")
-            rows.append({"gid": r["gid"], "sid": r["sid"], "msg": r["msg"], "count": r["count"],
-                         "distinct_sources": r["distinct_sources"], "distinct_destinations": r["distinct_destinations"],
-                         "top_source": r["top_source"], "top_source_share": r["top_source_share"],
-                         "observations": hint})
-        return {"run_id": run_id, "total_alerts": summary["total"], "targets": rows,
-                "note": "Ranked by count. One capture is one sample; prove any change with test_tuning."}
+            rows.append(
+                {
+                    "gid": r["gid"],
+                    "sid": r["sid"],
+                    "msg": r["msg"],
+                    "count": r["count"],
+                    "distinct_sources": r["distinct_sources"],
+                    "distinct_destinations": r["distinct_destinations"],
+                    "top_source": r["top_source"],
+                    "top_source_share": r["top_source_share"],
+                    "observations": hint,
+                }
+            )
+        return {
+            "run_id": run_id,
+            "total_alerts": summary["total"],
+            "targets": rows,
+            "note": "Ranked by count. One capture is one sample; prove any change with test_tuning.",
+        }
 
     def test_tuning(self, before_run_id: str, change: dict, reason: str) -> dict:
         store = self._case()
@@ -407,21 +521,40 @@ class Workbench:
             review = {"kind": "rule_edit", "diff": d["lines"], "checks": d["checks"]}
         else:
             review = {"kind": kind, "config_entry": tuning_changes.filter_snippet(change)}
-        return {"applied": True, "decision_id": decision["id"], "before_run": before_run_id, "after_run": rid,
-                "counts": counts, "counts_omitted": omitted, "total": {"before": b_sum["total"], "after": a_sum["total"]},
-                "review": review, "other_sids_changed": collateral[:MAX_SID_ROWS], "other_sids_changed_total": len(collateral),
-                "note": "Check that the alerts you want to keep (use get_alerts on the after run) still fire. "
-                        "The decision is recorded as 'proposed'; only the analyst accepts or rejects it (update_decision).",
-                "stream_caveats": a_sum["stream_caveats"]}
+        return {
+            "applied": True,
+            "decision_id": decision["id"],
+            "before_run": before_run_id,
+            "after_run": rid,
+            "counts": counts,
+            "counts_omitted": omitted,
+            "total": {"before": b_sum["total"], "after": a_sum["total"]},
+            "review": review,
+            "other_sids_changed": collateral[:MAX_SID_ROWS],
+            "other_sids_changed_total": len(collateral),
+            "note": "Check that the alerts you want to keep (use get_alerts on the after run) still fire. "
+            "The decision is recorded as 'proposed'; only the analyst accepts or rejects it (update_decision).",
+            "stream_caveats": a_sum["stream_caveats"],
+        }
 
     def update_decision(self, decision_id: str, status: str) -> dict:
         """Record the analyst's decision on a tested change: accepted, rejected, or back to proposed."""
         d = self._wrap(self._case().update_decision, decision_id, status)
-        return {"decision_id": d["id"], "kind": d["kind"], "status": d["status"], "history": d.get("history", []),
-                "next": "export_tuning gives the rule or config text to apply" if d["status"] == "accepted" else None}
+        return {
+            "decision_id": d["id"],
+            "kind": d["kind"],
+            "status": d["status"],
+            "history": d.get("history", []),
+            "next": "export_tuning gives the rule or config text to apply" if d["status"] == "accepted" else None,
+        }
 
-    def export_tuning(self, decision_ids: list[str] | None = None, path_prefix: str | None = None, overwrite: bool = False,
-                      include_unaccepted: bool = False) -> dict:
+    def export_tuning(
+        self,
+        decision_ids: list[str] | None = None,
+        path_prefix: str | None = None,
+        overwrite: bool = False,
+        include_unaccepted: bool = False,
+    ) -> dict:
         """Accepted tuning changes as text to apply: a rules fragment and a config snippet (optionally written to files)."""
         store = self._case()
         every = store.summary()["decisions"]
@@ -433,19 +566,26 @@ class Workbench:
             chosen = [by_id[i] for i in decision_ids]
             pending = [d["id"] for d in chosen if d["status"] != "accepted"]
             if pending and not include_unaccepted:
-                raise WorkbenchError(f"{', '.join(pending)} not accepted yet. Accept with update_decision once the analyst agrees, "
-                                     "or pass include_unaccepted=true to preview.")
+                raise WorkbenchError(
+                    f"{', '.join(pending)} not accepted yet. Accept with update_decision once the analyst agrees, "
+                    "or pass include_unaccepted=true to preview."
+                )
         else:
             chosen = [d for d in every if d["status"] == "accepted"]
             if not chosen:
-                raise WorkbenchError("No accepted decisions to export. Accept one with update_decision after the analyst agrees.")
+                raise WorkbenchError(
+                    "No accepted decisions to export. Accept one with update_decision after the analyst agrees."
+                )
         built = tuning_changes.build_export(chosen)
         written = []
         if path_prefix:
             protected = {Path(e["path"]).resolve() for e in store.summary()["evidence"]}
             parts = [(".rules", built["rules"]), (".lua", built["config"])]
-            targets = [(self._wrap(resolve_write, f"{path_prefix}{ext}", self.roots, overwrite, protected), text)
-                       for ext, text in parts if text]
+            targets = [
+                (self._wrap(resolve_write, f"{path_prefix}{ext}", self.roots, overwrite, protected), text)
+                for ext, text in parts
+                if text
+            ]
             for target, text in targets:  # every path is vetted before the first file is written
                 try:
                     write_text_safely(target, text, overwrite)
@@ -454,13 +594,22 @@ class Workbench:
                 except PathError as e:
                     raise WorkbenchError(str(e)) from None
                 written.append(str(target))
-            store.log_event("export.written", Path(written[0]).name if written else "tuning", {"format": "tuning", "paths": written})
+            store.log_event(
+                "export.written", Path(written[0]).name if written else "tuning", {"format": "tuning", "paths": written}
+            )
         unaccepted = [d["id"] for d in chosen if d["status"] != "accepted"]
-        return {"decisions": built["included"], "rules": built["rules"][:50_000], "config": built["config"][:50_000],
-                "written": written, "skipped": built["skipped"],
-                "warning": f"{', '.join(unaccepted)} not accepted yet; this is a preview." if unaccepted else None,
-                "how_to_apply": ["Replace the rules with the same sid in your rules file, then run validate_rules on the result.",
-                                 "Merge each config table into the table of the same name in snort.lua."]}
+        return {
+            "decisions": built["included"],
+            "rules": built["rules"][:50_000],
+            "config": built["config"][:50_000],
+            "written": written,
+            "skipped": built["skipped"],
+            "warning": f"{', '.join(unaccepted)} not accepted yet; this is a preview." if unaccepted else None,
+            "how_to_apply": [
+                "Replace the rules with the same sid in your rules file, then run validate_rules on the result.",
+                "Merge each config table into the table of the same name in snort.lua.",
+            ],
+        }
 
     @staticmethod
     def _trim_counts(full: dict, target_sid: str) -> tuple[dict, int]:
@@ -483,8 +632,10 @@ class Workbench:
             total, seen = 0, {}
             for a in self._iter_jsonl(f):
                 total += 1
-                seen.setdefault((a["gid"], a["sid"], a["pkt_num"], a["src_ip"], a["src_port"], a["dst_ip"], a["dst_port"]),
-                                tuple(a[x] for x in fields))
+                seen.setdefault(
+                    (a["gid"], a["sid"], a["pkt_num"], a["src_ip"], a["src_port"], a["dst_ip"], a["dst_port"]),
+                    tuple(a[x] for x in fields),
+                )
             return total, seen
 
         na, A = load(run_a)
@@ -496,25 +647,50 @@ class Workbench:
             return [{"sid": s, "count": n} for s, n in Counter(k[1] for k in keys).most_common(MAX_SID_ROWS)]
 
         def brief(k, values):
-            return {"sid": k[1], "pkt_num": k[2], "src_ip": k[3], "src_port": k[4], "dst_ip": k[5], "dst_port": k[6],
-                    "msg": values[k][1]}
+            return {
+                "sid": k[1],
+                "pkt_num": k[2],
+                "src_ip": k[3],
+                "src_port": k[4],
+                "dst_ip": k[5],
+                "dst_port": k[6],
+                "msg": values[k][1],
+            }
 
         def sampled(keys):
             return sorted(keys, key=lambda k: (k[2], k[1]))[:sample]
 
-        return {"run_a": run_a, "run_b": run_b, "totals": {"a": na, "b": nb},
-                "added": {"count": len(added), "by_sid": per_sid(added), "sample": [brief(k, B) for k in sampled(added)]},
-                "removed": {"count": len(removed), "by_sid": per_sid(removed), "sample": [brief(k, A) for k in sampled(removed)]},
-                "changed": {"count": len(changed),
-                            "sample": [{"sid": k[1], "pkt_num": k[2], "from": dict(zip(fields, A[k], strict=True)),
-                                        "to": dict(zip(fields, B[k], strict=True))} for k in sampled(changed)]}}
+        return {
+            "run_a": run_a,
+            "run_b": run_b,
+            "totals": {"a": na, "b": nb},
+            "added": {"count": len(added), "by_sid": per_sid(added), "sample": [brief(k, B) for k in sampled(added)]},
+            "removed": {
+                "count": len(removed),
+                "by_sid": per_sid(removed),
+                "sample": [brief(k, A) for k in sampled(removed)],
+            },
+            "changed": {
+                "count": len(changed),
+                "sample": [
+                    {
+                        "sid": k[1],
+                        "pkt_num": k[2],
+                        "from": dict(zip(fields, A[k], strict=True)),
+                        "to": dict(zip(fields, B[k], strict=True)),
+                    }
+                    for k in sampled(changed)
+                ],
+            },
+        }
 
     # ---- rules files ------------------------------------------------------------------------------
     def write_rules_file(self, path: str, rules_text: str, overwrite: bool = False) -> dict:
         if len(rules_text.encode()) > self.cfg.limits.max_rules_bytes:
             raise WorkbenchError("rules_text is larger than max_rules_bytes")
-        protected = ({Path(e["path"]).resolve() for e in self.store.summary()["evidence"]}
-                     if self.store and overwrite else None)
+        protected = (
+            {Path(e["path"]).resolve() for e in self.store.summary()["evidence"]} if self.store and overwrite else None
+        )
         # Vet the location before touching the file: anything outside the allowed roots is refused
         # without being read, so a diff can never reveal a file the server may not read.
         target = self._wrap(resolve_write, path, self.roots, True, protected)
@@ -522,11 +698,15 @@ class Workbench:
             # opened without following links and re-checked against the roots: a link that appeared after the
             # vetting above must not turn this diff into a way to read another file
             old = self._wrap(read_checked, target, self.roots, self.cfg.limits.max_rules_bytes).decode(errors="replace")
-            diff = "".join(difflib.unified_diff(old.splitlines(True), rules_text.splitlines(True),
-                                                str(target), "proposed", n=2))
-            return {"written": False, "reason": f"{target} already exists; nothing was changed. "
-                    "Choose a new name, or pass overwrite=true if you really mean to replace it.",
-                    "diff": diff[:20000] or "(identical)"}
+            diff = "".join(
+                difflib.unified_diff(old.splitlines(True), rules_text.splitlines(True), str(target), "proposed", n=2)
+            )
+            return {
+                "written": False,
+                "reason": f"{target} already exists; nothing was changed. "
+                "Choose a new name, or pass overwrite=true if you really mean to replace it.",
+                "diff": diff[:20000] or "(identical)",
+            }
         try:
             write_text_safely(target, rules_text if rules_text.endswith("\n") else rules_text + "\n", overwrite)
         except FileExistsError:
@@ -548,17 +728,27 @@ class Workbench:
             with self._staged(ev, ctx.run_dir, "source" + safe, self.cfg.limits.max_rules_bytes) as staged:
                 return self.engine.convert(ctx, staged)
 
-        rid, res = self._wrap(run_recorded, store, self.engine, "convert", work,
-                              [{"evidence_id": evidence_id, "sha256": ev["sha256"], "mount": "source"}])
+        rid, res = self._wrap(
+            run_recorded,
+            store,
+            self.engine,
+            "convert",
+            work,
+            [{"evidence_id": evidence_id, "sha256": ev["sha256"], "mount": "source"}],
+        )
         run_dir = store.root / "runs" / rid
         out = run_dir / "out"
         converted = out / "converted.rules"
         text = converted.read_text(errors="replace") if converted.exists() else ""
         errs = out / "convert_errors.txt"
-        return {"run_id": rid, "status": res.status, "converted_rules": text[:50000],
-                "converted_rules_path": str(converted) if converted.exists() else None,
-                "lua_config_path": str(out / "converted.lua") if (out / "converted.lua").exists() else None,
-                "conversion_notes": errs.read_text(errors="replace")[:4000] if errs.exists() else "",
-                "error_excerpt": res.error_excerpt,
-                "note": "Converted output lives in the run directory. Review it, validate it with validate_rules, "
-                        "then save with write_rules_file."}
+        return {
+            "run_id": rid,
+            "status": res.status,
+            "converted_rules": text[:50000],
+            "converted_rules_path": str(converted) if converted.exists() else None,
+            "lua_config_path": str(out / "converted.lua") if (out / "converted.lua").exists() else None,
+            "conversion_notes": errs.read_text(errors="replace")[:4000] if errs.exists() else "",
+            "error_excerpt": res.error_excerpt,
+            "note": "Converted output lives in the run directory. Review it, validate it with validate_rules, "
+            "then save with write_rules_file.",
+        }

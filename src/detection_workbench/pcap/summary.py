@@ -1,4 +1,5 @@
 """pcap_summary: packet count, time range, protocols, top talkers, services."""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -9,10 +10,32 @@ from .reader import iter_packets
 
 MAX_KEYS = 100_000  # distinct addresses / pairs tracked; counts for the rest are lumped into `untracked_packets`
 
-SERVICES = {20: "ftp-data", 21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp", 53: "dns", 80: "http", 110: "pop3",
-            123: "ntp", 143: "imap", 161: "snmp", 389: "ldap", 443: "https", 445: "smb", 465: "smtps",
-            587: "submission", 993: "imaps", 995: "pop3s", 1433: "mssql", 3306: "mysql", 3389: "rdp",
-            5432: "postgres", 8080: "http-alt", 8443: "https-alt"}
+SERVICES = {
+    20: "ftp-data",
+    21: "ftp",
+    22: "ssh",
+    23: "telnet",
+    25: "smtp",
+    53: "dns",
+    80: "http",
+    110: "pop3",
+    123: "ntp",
+    143: "imap",
+    161: "snmp",
+    389: "ldap",
+    443: "https",
+    445: "smb",
+    465: "smtps",
+    587: "submission",
+    993: "imaps",
+    995: "pop3s",
+    1433: "mssql",
+    3306: "mysql",
+    3389: "rdp",
+    5432: "postgres",
+    8080: "http-alt",
+    8443: "https-alt",
+}
 
 
 def _iso(ts: float) -> str:
@@ -43,7 +66,9 @@ def summarize(path: Path, top: int = 10) -> dict:
             if name:
                 svc[f"{name}/{p.proto.lower()}"] += 1
     return {
-        "packets": n, "bytes": nbytes, "non_ip_packets": non_ip,
+        "packets": n,
+        "bytes": nbytes,
+        "non_ip_packets": non_ip,
         "first_packet": _iso(first) if first is not None else None,
         "last_packet": _iso(last) if last is not None else None,
         "duration_s": round(last - first, 6) if first is not None else 0,

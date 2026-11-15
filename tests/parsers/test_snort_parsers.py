@@ -1,4 +1,5 @@
 """Parser tests against output recorded from real Snort 3.10.0.0 (see scripts/record_snort_outputs.py)."""
+
 import json
 from pathlib import Path
 
@@ -47,7 +48,9 @@ def test_validate_error_without_exit_zero_is_not_ok():
 
 
 def test_plain_messages():
-    assert "missing closing parenthesis" in plain_message("pcre2 compile of '(abc' failed at offset 4 : missing closing parenthesis")
+    assert "missing closing parenthesis" in plain_message(
+        "pcre2 compile of '(abc' failed at offset 4 : missing closing parenthesis"
+    )
     assert "within 3:65535" in plain_message("'depth' must be in 3:65535, inclusive")
     assert plain_message("something new") == "something new"
 

@@ -10,13 +10,23 @@ permissions:
 
 jobs:
   unit:
-    name: Lint and unit tests
+    name: Lint and unit tests (python ${{ matrix.python }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest supported Python and the newest, so a change in what the runner ships cannot surprise us.
+        python: ["3.12", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python }}
       - run: uv sync --locked
-      - run: uv run ruff check src tests scripts
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      # shellcheck is preinstalled on GitHub's runners
+      - run: git ls-files '.githooks/*' 'scripts/*.sh' | xargs shellcheck
       - run: uv run pytest -q
 
   integration:
@@ -30,3 +40,24 @@ jobs:
       - run: uv run pytest -q tests/integration
         env:
           DW_INTEGRATION: "1"
+
+  secrets:
+    name: secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # scan history, not just the latest commit
+      # Reads .gitleaks.toml.
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  audit:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      # Fails on any known vulnerability in the locked dependencies.
+      - run: uv audit --preview-features audit-command

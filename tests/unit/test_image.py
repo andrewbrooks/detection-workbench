@@ -1,4 +1,5 @@
 """The derived image that lets any host uid run the pinned Snort image, and the Docker CLI lookup."""
+
 import subprocess
 from pathlib import Path
 
@@ -15,7 +16,13 @@ PATHS = ["/home/snorty/snort3/bin/snort", "/home/snorty/snort3/etc/snort"]
 
 
 def test_traversal_dirs_are_the_ancestors_without_root_or_duplicates():
-    assert traversal_dirs(PATHS) == ["/home", "/home/snorty", "/home/snorty/snort3", "/home/snorty/snort3/bin", "/home/snorty/snort3/etc"]
+    assert traversal_dirs(PATHS) == [
+        "/home",
+        "/home/snorty",
+        "/home/snorty/snort3",
+        "/home/snorty/snort3/bin",
+        "/home/snorty/snort3/etc",
+    ]
     assert traversal_dirs(["/opt/x"]) == ["/opt"]
 
 
@@ -33,14 +40,19 @@ def test_unsafe_image_references_are_refused(bad):
 
 def test_dockerfile_only_adds_search_permission():
     text = dockerfile(BASE, PATHS)
-    assert text.splitlines() == [f"FROM {BASE}", "USER root",
-                                 "RUN chmod o+x /home /home/snorty /home/snorty/snort3 /home/snorty/snort3/bin /home/snorty/snort3/etc"]
+    assert text.splitlines() == [
+        f"FROM {BASE}",
+        "USER root",
+        "RUN chmod o+x /home /home/snorty /home/snorty/snort3 /home/snorty/snort3/bin /home/snorty/snort3/etc",
+    ]
     assert "COPY" not in text and "ADD" not in text and "curl" not in text
 
 
 def test_tag_is_deterministic_and_changes_with_base_or_content():
     t1 = derived_tag(BASE, dockerfile(BASE, PATHS))
-    assert t1 == derived_tag(BASE, dockerfile(BASE, PATHS)) and t1.startswith("detection-workbench/snort3:f15f714fd61a-")
+    assert t1 == derived_tag(BASE, dockerfile(BASE, PATHS)) and t1.startswith(
+        "detection-workbench/snort3:f15f714fd61a-"
+    )
     assert t1 != derived_tag(BASE, dockerfile(BASE, PATHS + ["/home/other/x"]))
     other = BASE.replace("f15f714fd61a", "0123456789ab")
     assert derived_tag(other, dockerfile(other, PATHS)) != t1
@@ -65,7 +77,11 @@ def fake_docker(monkeypatch, exists, build_rc=0):
 def test_ensure_image_skips_the_build_when_present(monkeypatch):
     calls = fake_docker(monkeypatch, exists=True)
     tag = ensure_image(BASE, PATHS)
-    assert [c[0][1] for c in calls] == ["image"] and calls[0][0][0] == "/opt/homebrew/bin/docker" and tag.startswith("detection-workbench/")
+    assert (
+        [c[0][1] for c in calls] == ["image"]
+        and calls[0][0][0] == "/opt/homebrew/bin/docker"
+        and tag.startswith("detection-workbench/")
+    )
 
 
 def test_ensure_image_builds_with_the_dockerfile_on_stdin(monkeypatch):

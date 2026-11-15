@@ -1,4 +1,5 @@
 """Evidence is verified while it is read, so a file cannot change between the check and the use."""
+
 import hashlib
 import os
 
@@ -100,6 +101,7 @@ def test_destination_is_never_overwritten(f, root, tmp_path):
 
 def test_read_checked_reads_without_a_hash_and_refuses_links(f, root, tmp_path):
     from detection_workbench.safety.verified import read_checked
+
     assert read_checked(f, [root], 10**6) == DATA
     link = root / "ln"
     link.symlink_to(f)
@@ -111,6 +113,7 @@ def test_read_checked_reads_without_a_hash_and_refuses_links(f, root, tmp_path):
 
 def test_fingerprint_hashes_one_pass_and_keeps_only_a_head(root, tmp_path):
     from detection_workbench.safety.verified import fingerprint
+
     big = root / "big.bin"
     data = bytes(range(256)) * 1000
     big.write_bytes(data)

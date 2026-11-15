@@ -1,4 +1,5 @@
 """Bounds and robustness found in the production-readiness review."""
+
 import json
 import subprocess
 from pathlib import Path
@@ -26,14 +27,18 @@ class Proc:
         self.returncode, self.stdout, self.stderr = rc, out, err
 
 
-SNORT3 = "   ,,_     -*> Snort++ <*-\n  o\"  )~   Version 3.10.0.0\n"
+SNORT3 = '   ,,_     -*> Snort++ <*-\n  o"  )~   Version 3.10.0.0\n'
 
 
-def engine(monkeypatch, *, native=None, docker=True, inspect=None, run=None, build=None, derived_exists=True,
-           backend="auto"):
+def engine(
+    monkeypatch, *, native=None, docker=True, inspect=None, run=None, build=None, derived_exists=True, backend="auto"
+):
     """A SnortEngine whose `snort`/`docker` calls are scripted. `engine._calls` records every command that was run."""
-    monkeypatch.setattr(plugin_mod.shutil, "which", lambda n: ("/usr/bin/" + n) if (
-        (n == "snort" and native is not None) or (n == "docker" and docker)) else None)
+    monkeypatch.setattr(
+        plugin_mod.shutil,
+        "which",
+        lambda n: ("/usr/bin/" + n) if ((n == "snort" and native is not None) or (n == "docker" and docker)) else None,
+    )
     calls = []
 
     def fake_run(argv, **kw):
@@ -76,7 +81,9 @@ def test_no_docker_and_no_snort(monkeypatch):
 
 
 def test_daemon_down_is_not_reported_as_a_missing_image(monkeypatch):
-    v = engine(monkeypatch, inspect=Proc(1, "", "Cannot connect to the Docker daemon at unix:///var/run/docker.sock.\n")).version()
+    v = engine(
+        monkeypatch, inspect=Proc(1, "", "Cannot connect to the Docker daemon at unix:///var/run/docker.sock.\n")
+    ).version()
     assert not v.available and "not usable" in v.detail and "daemon" in v.detail and "docker pull" not in v.detail
 
 
@@ -85,9 +92,14 @@ def test_missing_image_says_how_to_pull(monkeypatch):
     assert not v.available and "docker pull" in v.detail
 
 
-@pytest.mark.parametrize("kwargs,text", [({"inspect": subprocess.TimeoutExpired("docker", 30)}, "did not respond"),
-                                         ({"run": subprocess.TimeoutExpired("docker", 60)}, "did not respond"),
-                                         ({"run": Proc(0, "garbage")}, "could not start Snort in the image as your user")])
+@pytest.mark.parametrize(
+    "kwargs,text",
+    [
+        ({"inspect": subprocess.TimeoutExpired("docker", 30)}, "did not respond"),
+        ({"run": subprocess.TimeoutExpired("docker", 60)}, "did not respond"),
+        ({"run": Proc(0, "garbage")}, "could not start Snort in the image as your user"),
+    ],
+)
 def test_docker_hangs_and_garbage_do_not_crash(monkeypatch, kwargs, text):
     v = engine(monkeypatch, **kwargs).version()
     assert not v.available and text in v.detail
@@ -113,11 +125,16 @@ def test_unavailable_engine_is_looked_for_again_but_available_is_cached(monkeypa
 # ---- the derived image and running as the host user ------------------------------------------
 def test_probe_runs_as_the_host_user_with_the_lockdown_flags_on_the_derived_image(monkeypatch):
     import os
+
     e = engine(monkeypatch)
     assert e.version().available
     argv = next(a for a, _ in e._calls if a[1] == "run")
     assert argv[argv.index("--user") + 1] == f"{os.getuid()}:{os.getgid()}"
-    assert "--read-only" in argv and argv[argv.index("--cap-drop") + 1] == "ALL" and argv[argv.index("--network") + 1] == "none"
+    assert (
+        "--read-only" in argv
+        and argv[argv.index("--cap-drop") + 1] == "ALL"
+        and argv[argv.index("--network") + 1] == "none"
+    )
     image = argv[argv.index("-V") - 1]
     assert image == e._image and image.startswith("detection-workbench/snort3:")
     assert e.status()["docker_run_image"] == image
@@ -138,14 +155,21 @@ def test_derived_image_is_not_rebuilt_when_present(monkeypatch):
 
 
 def test_image_build_failure_is_explained(monkeypatch):
-    v = engine(monkeypatch, derived_exists=False, build=Proc(1, "", "failed to solve: permission denied\nmore")).version()
+    v = engine(
+        monkeypatch, derived_exists=False, build=Proc(1, "", "failed to solve: permission denied\nmore")
+    ).version()
     assert not v.available and "could not prepare the Docker image" in v.detail and "failed to solve" in v.detail
 
 
 def test_snort_that_cannot_start_as_your_user_is_reported_with_the_uid(monkeypatch):
     import os
+
     v = engine(monkeypatch, run=Proc(126, "", "exec: stat /home/snorty/snort3/bin/snort: permission denied")).version()
-    assert not v.available and f"as your user ({os.getuid()}:{os.getgid()})" in v.detail and "permission denied" in v.detail
+    assert (
+        not v.available
+        and f"as your user ({os.getuid()}:{os.getgid()})" in v.detail
+        and "permission denied" in v.detail
+    )
 
 
 # ---- bounded reads and the validation time budget -----------------------------------------
@@ -161,7 +185,9 @@ def test_cascade_rechecks_stop_when_the_time_budget_is_spent(tmp_path, monkeypat
     eng = plugin_mod.SnortEngine(cfg)
     ctx = RunContext(run_dir=tmp_path, backend="native", cfg=cfg, etc_dir="/x", name="dw-t")
     (tmp_path / "cfg").mkdir()
-    rules = "\n".join(f'alert tcp any any -> any any ( msg:"r{i}"; content:"a"; sid:{1000000 + i}; rev:1; )' for i in range(1, 9))
+    rules = "\n".join(
+        f'alert tcp any any -> any any ( msg:"r{i}"; content:"a"; sid:{1000000 + i}; rev:1; )' for i in range(1, 9)
+    )
     calls = []
     clock = {"t": 0.0}
     monkeypatch.setattr(plugin_mod.time, "monotonic", lambda: clock["t"])
@@ -172,11 +198,14 @@ def test_cascade_rechecks_stop_when_the_time_budget_is_spent(tmp_path, monkeypat
         for n in ("stdout.txt", "stderr.txt"):
             (tmp_path / n).write_text("")
         from detection_workbench.runner.runner import RawRun
+
         return RawRun(["x"], 0, False, 4.0, tmp_path / "stdout.txt", tmp_path / "stderr.txt", "native"), ["x"]
 
     monkeypatch.setattr(eng, "_validate_once", fake_once)
-    errors = [{"severity": "error", "line": ln, "sid": 1, "error": "syntax error", "plain": "", "source": "snort", "rule": ""}
-              for ln in (2, 5)]
+    errors = [
+        {"severity": "error", "line": ln, "sid": 1, "error": "syntax error", "plain": "", "source": "snort", "rule": ""}
+        for ln in (2, 5)
+    ]
     rep = ValidationReport(ok=False, errors=errors)
     out, done, extra, incomplete = eng._recheck_cascade(ctx, rep, rules)
     assert incomplete is True and len(calls) == 3 and done == [2, 3, 5]  # 4 candidate lines, stopped once over budget
@@ -190,6 +219,7 @@ class NoEngine:
 
     def version(self):
         from detection_workbench.engines.base import EngineVersion
+
         return EngineVersion("snort", None, None, False, "test double")
 
     def has_snort2lua(self):
@@ -207,10 +237,26 @@ def make_run(store, alerts, kind="run"):
     rid, d = store.allocate_run()
     with (d / "results" / "alerts.jsonl").open("w") as f:
         for i, a in enumerate(alerts):
-            f.write(json.dumps({"alert_idx": i, "gid": 1, "rev": 1, "class": "none", "priority": 0, "msg": "m",
-                                "src_port": 1, "dst_port": 2, "dst_ip": "10.0.0.2", **a}) + "\n")
-    store.record_run({"id": rid, "kind": kind, "status": "ok", "inputs": [],
-                      "results": {"alerts": "results/alerts.jsonl"}})
+            f.write(
+                json.dumps(
+                    {
+                        "alert_idx": i,
+                        "gid": 1,
+                        "rev": 1,
+                        "class": "none",
+                        "priority": 0,
+                        "msg": "m",
+                        "src_port": 1,
+                        "dst_port": 2,
+                        "dst_ip": "10.0.0.2",
+                        **a,
+                    }
+                )
+                + "\n"
+            )
+    store.record_run(
+        {"id": rid, "kind": kind, "status": "ok", "inputs": [], "results": {"alerts": "results/alerts.jsonl"}}
+    )
     return rid
 
 
@@ -220,9 +266,23 @@ def alert(sid, pkt, src="10.0.0.1", **kw):
 
 def test_run_payload_lists_a_bounded_number_of_sids(wb):
     rid = make_run(wb.store, [alert(1, 1)])
-    rows = [{"gid": 1, "sid": 1000000 + i, "rev": 1, "msg": "m", "count": 1000 - i, "distinct_sources": 1,
-             "distinct_destinations": 1, "top_source": "a", "top_source_share": 1.0} for i in range(MAX_SID_ROWS + 50)]
-    res = EngineResult(status="ok", argv=[], payload={"total": 5, "truncated": False, "by_sid": rows, "stream_caveats": {}})
+    rows = [
+        {
+            "gid": 1,
+            "sid": 1000000 + i,
+            "rev": 1,
+            "msg": "m",
+            "count": 1000 - i,
+            "distinct_sources": 1,
+            "distinct_destinations": 1,
+            "top_source": "a",
+            "top_source_share": 1.0,
+        }
+        for i in range(MAX_SID_ROWS + 50)
+    ]
+    res = EngineResult(
+        status="ok", argv=[], payload={"total": 5, "truncated": False, "by_sid": rows, "stream_caveats": {}}
+    )
     out = wb._run_payload(rid, res)
     assert len(out["by_sid"]) == MAX_SID_ROWS and out["sids_total"] == MAX_SID_ROWS + 50
     assert out["by_sid"][0]["count"] == 1000  # the busiest come first
@@ -252,15 +312,26 @@ def test_decision_records_and_report_shows_omitted_rows(wb):
 def test_diff_runs_added_removed_changed_and_caps(wb):
     shared = [alert(10, 1), alert(11, 2), alert(12, 3, rev=1, msg="old")]
     a = make_run(wb.store, shared + [alert(99, 50), alert(99, 51)])
-    b = make_run(wb.store, [alert(10, 1), alert(11, 2), alert(12, 3, rev=2, msg="new")]
-                 + [alert(500 + i, 100 + i) for i in range(MAX_SID_ROWS + 30)])
+    b = make_run(
+        wb.store,
+        [alert(10, 1), alert(11, 2), alert(12, 3, rev=2, msg="new")]
+        + [alert(500 + i, 100 + i) for i in range(MAX_SID_ROWS + 30)],
+    )
     d = wb.diff_runs(a, b, sample=5)
     assert d["totals"] == {"a": 5, "b": 3 + MAX_SID_ROWS + 30}
     assert d["removed"]["count"] == 2 and d["removed"]["by_sid"] == [{"sid": 99, "count": 2}]
-    assert d["added"]["count"] == MAX_SID_ROWS + 30 and len(d["added"]["by_sid"]) == MAX_SID_ROWS and len(d["added"]["sample"]) == 5
+    assert (
+        d["added"]["count"] == MAX_SID_ROWS + 30
+        and len(d["added"]["by_sid"]) == MAX_SID_ROWS
+        and len(d["added"]["sample"]) == 5
+    )
     assert d["changed"]["count"] == 1
     ch = d["changed"]["sample"][0]
-    assert ch["sid"] == 12 and ch["from"]["msg"] == "old" and ch["to"] == {"rev": 2, "msg": "new", "class": "none", "priority": 0}
+    assert (
+        ch["sid"] == 12
+        and ch["from"]["msg"] == "old"
+        and ch["to"] == {"rev": 2, "msg": "new", "class": "none", "priority": 0}
+    )
     assert [s["pkt_num"] for s in d["added"]["sample"]] == sorted(s["pkt_num"] for s in d["added"]["sample"])
 
 

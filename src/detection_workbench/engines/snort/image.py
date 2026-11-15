@@ -5,6 +5,7 @@ a home directory that only its own user (uid 1000) may enter, so every other uid
 Snort starts. The derived image adds search permission (`chmod o+x`) on the directories leading to the install, and nothing
 else. No capability is added to the container and the build needs no network.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -61,8 +62,13 @@ def ensure_image(base: str, paths: list[str]) -> str:
     have = subprocess.run([_docker(), "image", "inspect", tag], capture_output=True, text=True, timeout=30)
     if have.returncode == 0:
         return tag
-    built = subprocess.run([_docker(), "build", "--quiet", "--network", "none", "--tag", tag, "-"],
-                           input=text, capture_output=True, text=True, timeout=BUILD_TIMEOUT_S)
+    built = subprocess.run(
+        [_docker(), "build", "--quiet", "--network", "none", "--tag", tag, "-"],
+        input=text,
+        capture_output=True,
+        text=True,
+        timeout=BUILD_TIMEOUT_S,
+    )
     if built.returncode:
         raise RuntimeError(f"docker build failed: {_first_line(built.stderr) or 'no error output'}")
     return tag

@@ -1,4 +1,5 @@
 """The MCP surface: tool registration, tool-visible errors, and schemas. No Snort or Docker needed."""
+
 import asyncio
 import json
 from pathlib import Path
@@ -48,10 +49,31 @@ def call(server, name, **args):
         return res.is_error, text
 
 
-EXPECTED = {"create_case", "open_case", "list_cases", "register_evidence", "add_finding", "update_finding", "add_note",
-            "update_case", "get_case", "export_case", "get_status", "pcap_summary", "validate_rules", "run_pcap",
-            "get_alerts", "explain_alert", "profile_rules", "suggest_tuning_targets", "test_tuning", "update_decision", "export_tuning", "diff_runs",
-            "write_rules_file"}
+EXPECTED = {
+    "create_case",
+    "open_case",
+    "list_cases",
+    "register_evidence",
+    "add_finding",
+    "update_finding",
+    "add_note",
+    "update_case",
+    "get_case",
+    "export_case",
+    "get_status",
+    "pcap_summary",
+    "validate_rules",
+    "run_pcap",
+    "get_alerts",
+    "explain_alert",
+    "profile_rules",
+    "suggest_tuning_targets",
+    "test_tuning",
+    "update_decision",
+    "export_tuning",
+    "diff_runs",
+    "write_rules_file",
+}
 
 
 def test_tools_prompt_and_instructions(server):
@@ -63,7 +85,9 @@ def test_tools_prompt_and_instructions(server):
 
 def test_every_tool_is_described_with_an_example(server):
     for t in asyncio.run(server.list_tools()):
-        assert t.description and "Example" in t.description or t.name in {"list_cases", "get_case", "get_status"}, t.name
+        assert t.description and "Example" in t.description or t.name in {"list_cases", "get_case", "get_status"}, (
+            t.name
+        )
 
 
 def test_wrapped_tools_keep_their_parameter_schemas(server):

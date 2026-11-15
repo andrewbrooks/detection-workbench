@@ -1,10 +1,13 @@
 """The example generator edits docs/writeup.md in place; its block replacement must never swallow other text."""
+
 import importlib.util
 from pathlib import Path
 
 import pytest
 
-SPEC = importlib.util.spec_from_file_location("make_example_case", Path(__file__).parents[2] / "scripts/make_example_case.py")
+SPEC = importlib.util.spec_from_file_location(
+    "make_example_case", Path(__file__).parents[2] / "scripts/make_example_case.py"
+)
 gen = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gen)
 
