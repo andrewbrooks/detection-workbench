@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
+from typing import Any
 
 from ...config import Config
 from ...pcap.flows import analyze_streams
@@ -194,7 +195,7 @@ class SnortEngine:
             "docker_run_image": self._image,
             "snort2lua": self.has_snort2lua(),
         }
-        if v.available:
+        if v.available and v.backend is not None:
             try:
                 out["config_dir"] = self._etc_dir(v.backend)
             except RuntimeError as e:
@@ -340,7 +341,12 @@ class SnortEngine:
             ctx.out_arg("convert_errors.txt"),
         ]
         if ctx.backend == "native":
-            exe = shutil.which("snort2lua") or str(Path(shutil.which(self.cfg.snort.binary)).parent / "snort2lua")
+            exe = shutil.which("snort2lua")
+            if exe is None:
+                snort = shutil.which(self.cfg.snort.binary)
+                if snort is None:
+                    raise RuntimeError(f"cannot find {self.cfg.snort.binary} on PATH")
+                exe = str(Path(snort).parent / "snort2lua")
             argv = [exe] + args
         else:
             argv = docker_argv(ctx, args, binary=str(Path(self.cfg.snort.docker_binary).parent / "snort2lua"))
@@ -362,7 +368,7 @@ class SnortEngine:
         lim = self.cfg.limits
         if len(rules_text.encode()) > lim.max_rules_bytes:
             raise ValueError("rule set is larger than the configured max_rules_bytes")
-        opts = {
+        opts: dict[str, Any] = {
             "home_net": options.get("home_net"),
             "external_net": options.get("external_net"),
             "flush_one_sided": bool(options.get("flush_one_sided")),

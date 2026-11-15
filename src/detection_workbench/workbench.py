@@ -11,6 +11,7 @@ import shutil
 import tempfile
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 from .case.export import write_export
 from .case.model import EVIDENCE_TYPES, now
@@ -106,6 +107,7 @@ class Workbench:
                 {"source": "evidence", "evidence_id": rules_id},
                 [{"evidence_id": rules_id, "sha256": ev["sha256"], "mount": "cfg/rules.rules"}],
             )
+        assert rules_text is not None  # the check above guarantees exactly one of the two is given
         self._no_includes(rules_text)
         return rules_text, {"source": "inline"}, []
 
@@ -320,7 +322,7 @@ class Workbench:
         profile: bool = False,
     ) -> dict:
         text, ref, rinputs = self._rules(rules_id, rules_text)
-        opts = {
+        opts: dict[str, Any] = {
             "home_net": home_net,
             "external_net": external_net,
             "flush_one_sided": flush_one_sided,
@@ -359,7 +361,8 @@ class Workbench:
         pkt_to: int | None = None,
     ):
         _, f = self._run_files(run_id)
-        out, matched = [], 0
+        out: list[dict] = []
+        matched = 0
         for a in self._iter_jsonl(f):
             if sid is not None and a["sid"] != sid:
                 continue
@@ -629,7 +632,8 @@ class Workbench:
 
         def load(rid):
             _, f = self._run_files(rid)
-            total, seen = 0, {}
+            total = 0
+            seen: dict[tuple, tuple] = {}
             for a in self._iter_jsonl(f):
                 total += 1
                 seen.setdefault(

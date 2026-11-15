@@ -34,7 +34,8 @@ def _split_gid_sid(blob: str, known: set[tuple[int, int]]) -> tuple[int, int] | 
 
 def parse_profile(stdout: str, rules_text: str = "") -> dict:
     known = known_rules(rules_text)
-    rows, unresolved, in_table = [], 0, False
+    rows: list[dict[str, int | float]] = []
+    unresolved, in_table = 0, False
     for line in stdout.splitlines():
         if _HEADER.match(line):
             in_table = True
@@ -60,7 +61,7 @@ def parse_profile(stdout: str, rules_text: str = "") -> dict:
             rank, gs, rev, rest = tok[0], (int(tok[1]), int(tok[2])), tok[3], tok[4:]
         else:
             continue
-        row = {"rank": int(rank), "gid": gs[0], "sid": gs[1], "rev": int(rev)}
+        row: dict[str, int | float] = {"rank": int(rank), "gid": gs[0], "sid": gs[1], "rev": int(rev)}
         row.update({name: int(v) for name, v in zip(COLUMNS, rest[:9], strict=True)})
         row["rule_time_pct"] = float(rest[9])
         rows.append(row)

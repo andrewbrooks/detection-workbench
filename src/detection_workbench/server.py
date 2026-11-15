@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import functools
 import sys
+from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
@@ -27,10 +28,16 @@ def _tool_errors(fn):
     return wrapper
 
 
+class _Server(MCPServer[Any]):
+    """The MCP server, with the workbench attached so tests can reach it."""
+
+    _workbench: Workbench
+
+
 def build_server(cfg: Config | None = None, wb: Workbench | None = None) -> MCPServer:
     cfg = cfg or load_config()
     wb = wb or Workbench(cfg)
-    mcp = MCPServer("detection-workbench", instructions=GUIDANCE)
+    mcp = _Server("detection-workbench", instructions=GUIDANCE)
     mcp._workbench = wb  # exposed for tests
 
     def tool():

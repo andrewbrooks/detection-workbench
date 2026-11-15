@@ -44,7 +44,11 @@ def _iso(ts: float) -> str:
 
 def summarize(path: Path, top: int = 10) -> dict:
     n, first, last, nbytes = 0, None, None, 0
-    protos, talkers, convs, svc, non_ip = Counter(), Counter(), Counter(), Counter(), 0
+    protos: Counter[str] = Counter()
+    talkers: Counter[str | None] = Counter()
+    convs: Counter[tuple[str | None, str | None]] = Counter()
+    svc: Counter[str] = Counter()
+    non_ip = 0
     untracked = 0
     for p in iter_packets(path):
         n += 1
@@ -62,7 +66,7 @@ def summarize(path: Path, top: int = 10) -> dict:
         if (p.src, p.dst) in convs or len(convs) < MAX_KEYS:
             convs[(p.src, p.dst)] += 1
         if p.dport is not None:
-            name = SERVICES.get(p.dport) or SERVICES.get(p.sport)
+            name = SERVICES.get(p.dport) or (SERVICES.get(p.sport) if p.sport is not None else None)
             if name:
                 svc[f"{name}/{p.proto.lower()}"] += 1
     return {
@@ -71,7 +75,7 @@ def summarize(path: Path, top: int = 10) -> dict:
         "non_ip_packets": non_ip,
         "first_packet": _iso(first) if first is not None else None,
         "last_packet": _iso(last) if last is not None else None,
-        "duration_s": round(last - first, 6) if first is not None else 0,
+        "duration_s": round(last - first, 6) if first is not None and last is not None else 0,
         "protocols": dict(protos.most_common()),
         "top_sources": talkers.most_common(top),
         "top_conversations": [{"src": s, "dst": d, "packets": c} for (s, d), c in convs.most_common(top)],
