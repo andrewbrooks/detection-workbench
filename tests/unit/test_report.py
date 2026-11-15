@@ -1,4 +1,5 @@
 """update_case and the Markdown report's analysis sections (no Snort needed)."""
+
 import json
 
 import pytest
@@ -19,15 +20,35 @@ def add_run(store, kind="run", summary=None, **extra):
     if summary is not None:
         (d / "results" / "summary.json").write_text(json.dumps(summary))
         results["summary"] = "results/summary.json"
-    doc = {"id": rid, "kind": kind, "engine": "snort", "engine_version": "3.10.0.0", "backend": "docker",
-           "status": "ok", "results": results, "inputs": [], "rules": None, "totals": {}, **extra}
+    doc = {
+        "id": rid,
+        "kind": kind,
+        "engine": "snort",
+        "engine_version": "3.10.0.0",
+        "backend": "docker",
+        "status": "ok",
+        "results": results,
+        "inputs": [],
+        "rules": None,
+        "totals": {},
+        **extra,
+    }
     store.record_run(doc)
     return rid
 
 
 def sid_row(sid, msg, count, sources=3, top="10.0.0.1", share=0.9):
-    return {"gid": 1, "sid": sid, "rev": 1, "msg": msg, "count": count, "distinct_sources": sources,
-            "distinct_destinations": 1, "top_source": top, "top_source_share": share}
+    return {
+        "gid": 1,
+        "sid": sid,
+        "rev": 1,
+        "msg": msg,
+        "count": count,
+        "distinct_sources": sources,
+        "distinct_destinations": 1,
+        "top_source": top,
+        "top_source_share": share,
+    }
 
 
 # ---- update_case ---------------------------------------------------------------
@@ -80,7 +101,9 @@ def test_results_by_run_table_and_overflow(store):
 
 def test_tuning_run_shows_parent_and_truncation(store):
     a = add_run(store, summary={"total": 5, "by_sid": [], "stream_caveats": {}})
-    b = add_run(store, kind="tuning", parent_run=a, summary={"total": 2, "truncated": True, "by_sid": [], "stream_caveats": {}})
+    b = add_run(
+        store, kind="tuning", parent_run=a, summary={"total": 2, "truncated": True, "by_sid": [], "stream_caveats": {}}
+    )
     md = export_markdown(store)
     assert f"### {b} — tuning · parent `{a}`" in md
     assert "2 alerts · status ok · **truncated at the parse limit**" in md
@@ -92,8 +115,11 @@ def test_stream_caveats_surface(store):
     rid = add_run(store, summary={"total": 1, "by_sid": [sid_row(1, "x", 1)], "stream_caveats": caveat})
     clean = add_run(store, summary={"total": 1, "by_sid": [], "stream_caveats": {"tcp_flows": 2, "unacked_flows": 0}})
     md = export_markdown(store)
-    cav = md[md.index("## Caveats"):md.index("## Timeline")]
-    assert f"**{rid}:** 4 of 5 TCP flows carried data the peer never ACKed (1 one-sided). Service rules can miss here." in cav
+    cav = md[md.index("## Caveats") : md.index("## Timeline")]
+    assert (
+        f"**{rid}:** 4 of 5 TCP flows carried data the peer never ACKed (1 one-sided). Service rules can miss here."
+        in cav
+    )
     assert clean not in cav
 
 
@@ -107,23 +133,44 @@ def test_failed_run_and_proposed_decision_caveats(store):
 
 
 def test_validate_run_listed(store):
-    add_run(store, kind="validate", summary={"ok": False, "errors": [{"line": 2, "sid": 7, "plain": "bad option"}],
-                                              "warnings": [], "lint": [{}]})
+    add_run(
+        store,
+        kind="validate",
+        summary={"ok": False, "errors": [{"line": 2, "sid": 7, "plain": "bad option"}], "warnings": [], "lint": [{}]},
+    )
     md = export_markdown(store)
     assert "— validate: not ok (1 error, 0 warnings, 1 lint note)" in md and "- line 2, sid 7: bad option" in md
 
 
 def test_overview_captures_engines_and_rule_sets(store):
-    add_run(store, kind="summary", engine="dpkt", engine_version=None, backend="native",
-            inputs=[{"evidence_id": "e-0001"}],
-            summary={"packets": 13, "first_packet": "2023-11-14T22:13:20Z", "last_packet": "2023-11-14T22:13:20.12Z",
-                     "protocols": {"TCP": 11, "UDP": 2}})
-    a = add_run(store, summary={"total": 0, "by_sid": [], "stream_caveats": {}},
-                rules={"source": "evidence", "evidence_id": "e-0002", "sha256": "ab" * 32})
-    b = add_run(store, kind="tuning", parent_run=a, summary={"total": 0, "by_sid": [], "stream_caveats": {}},
-                rules={"source": "derived", "parent_run": a, "sha256": "cd" * 32})
+    add_run(
+        store,
+        kind="summary",
+        engine="dpkt",
+        engine_version=None,
+        backend="native",
+        inputs=[{"evidence_id": "e-0001"}],
+        summary={
+            "packets": 13,
+            "first_packet": "2023-11-14T22:13:20Z",
+            "last_packet": "2023-11-14T22:13:20.12Z",
+            "protocols": {"TCP": 11, "UDP": 2},
+        },
+    )
+    a = add_run(
+        store,
+        summary={"total": 0, "by_sid": [], "stream_caveats": {}},
+        rules={"source": "evidence", "evidence_id": "e-0002", "sha256": "ab" * 32},
+    )
+    b = add_run(
+        store,
+        kind="tuning",
+        parent_run=a,
+        summary={"total": 0, "by_sid": [], "stream_caveats": {}},
+        rules={"source": "derived", "parent_run": a, "sha256": "cd" * 32},
+    )
     md = export_markdown(store)
-    ov = md[md.index("## Overview"):md.index("## Evidence")]
+    ov = md[md.index("## Overview") : md.index("## Evidence")]
     assert "| e-0001 | 13 | 2023-11-14T22:13:20Z |" in ov and "TCP 11, UDP 2" in ov
     assert "**Engines:** snort 3.10.0.0 (docker)" in ov and "dpkt" not in ov.split("**Engines:**")[1].splitlines()[0]
     assert f"| e-0002 | {'ab' * 8}… | {a} |" in ov and f"| derived from {a} | {'cd' * 8}… | {b} |" in ov
@@ -133,7 +180,7 @@ def test_timeline_lists_events_in_order_and_caps(store):
     for i in range(MAX_TIMELINE + 10):
         store.add_note(f"n{i}")
     md = export_markdown(store)
-    tl = md[md.index("## Timeline"):md.index("## Notes")]
+    tl = md[md.index("## Timeline") : md.index("## Notes")]
     assert "| case.created |" in tl and tl.index("case.created") < tl.index("note.added")
     assert "11 more events in `events.jsonl`" in tl
 
@@ -146,19 +193,33 @@ def test_missing_or_corrupt_result_files_do_not_break_the_report(store):
 
 def test_identical_rule_set_hash_is_one_row_with_all_origins(store):
     sha = "ef" * 32
-    a = add_run(store, kind="validate", summary={"ok": True}, rules={"source": "evidence", "evidence_id": "e-0002", "sha256": sha})
-    b = add_run(store, summary={"total": 0, "by_sid": [], "stream_caveats": {}},
-                rules={"source": "evidence", "evidence_id": "e-0002", "sha256": sha})
-    c = add_run(store, kind="tuning", parent_run=b, summary={"total": 0, "by_sid": [], "stream_caveats": {}},
-                rules={"source": "derived", "parent_run": b, "sha256": sha})
+    a = add_run(
+        store,
+        kind="validate",
+        summary={"ok": True},
+        rules={"source": "evidence", "evidence_id": "e-0002", "sha256": sha},
+    )
+    b = add_run(
+        store,
+        summary={"total": 0, "by_sid": [], "stream_caveats": {}},
+        rules={"source": "evidence", "evidence_id": "e-0002", "sha256": sha},
+    )
+    c = add_run(
+        store,
+        kind="tuning",
+        parent_run=b,
+        summary={"total": 0, "by_sid": [], "stream_caveats": {}},
+        rules={"source": "derived", "parent_run": b, "sha256": sha},
+    )
     ov = export_markdown(store)
-    ov = ov[ov.index("**Rule sets**"):ov.index("## Evidence")]
+    ov = ov[ov.index("**Rule sets**") : ov.index("## Evidence")]
     assert ov.count(f"{'ef' * 8}…") == 1 and f"| e-0002 · derived from {b} | {'ef' * 8}… | {a}, {b}, {c} |" in ov
 
 
 # ---- bars, change column, headline --------------------------------------------------------
 def test_bars_scale_to_the_largest_row_and_never_hide_a_nonzero_count():
     from detection_workbench.case.export import BAR_WIDTH, _bar
+
     assert _bar(100, 100) == "█" * BAR_WIDTH and _bar(50, 100) == "█████░░░░░"
     assert _bar(1, 1000) == "█" + "░" * (BAR_WIDTH - 1)  # tiny but non-zero still shows
     assert _bar(0, 100) == "░" * BAR_WIDTH and _bar(5, 0) == "░" * BAR_WIDTH
@@ -172,17 +233,26 @@ def test_report_table_has_a_bar_per_row(store):
     assert "| 1 | big | 300 | ██████████ |" in md and "| 2 | small | 3 | █░░░░░░░░░ |" in md and "| volume |" in md
 
 
-@pytest.mark.parametrize("before,after,text", [(315, 15, "−95%"), (6, 1, "−83%"), (4, 4, "no change"),
-                                               (0, 3, "+3 (new)"), (2, 3, "+50%"), (5, 0, "−100%")])
+@pytest.mark.parametrize(
+    "before,after,text",
+    [(315, 15, "−95%"), (6, 1, "−83%"), (4, 4, "no change"), (0, 3, "+3 (new)"), (2, 3, "+50%"), (5, 0, "−100%")],
+)
 def test_change_column(before, after, text):
     from detection_workbench.case.export import _change
+
     assert _change(before, after) == text
 
 
 def test_headline_summarises_the_case(store):
-    base = add_run(store, summary={"total": 320, "by_sid": [sid_row(7, "a", 315), sid_row(8, "b", 5)], "stream_caveats": {}})
-    tune = add_run(store, kind="tuning", parent_run=base,
-                   summary={"total": 1000, "by_sid": [sid_row(9, "huge-but-hypothetical", 999)], "stream_caveats": {}})
+    base = add_run(
+        store, summary={"total": 320, "by_sid": [sid_row(7, "a", 315), sid_row(8, "b", 5)], "stream_caveats": {}}
+    )
+    tune = add_run(
+        store,
+        kind="tuning",
+        parent_run=base,
+        summary={"total": 1000, "by_sid": [sid_row(9, "huge-but-hypothetical", 999)], "stream_caveats": {}},
+    )
     f = store.add_finding("one", [base], [])
     store.add_finding("two", [base], [])
     store.update_finding(f["id"], status="confirmed")
@@ -204,14 +274,21 @@ def test_headline_on_an_empty_case_and_position(store):
 def test_decisions_table_shows_percentage_change(store):
     a = add_run(store, summary={"total": 1, "by_sid": [], "stream_caveats": {}})
     b = add_run(store, kind="tuning", parent_run=a, summary={"total": 1, "by_sid": [], "stream_caveats": {}})
-    store.add_decision("suppress", {"sid": 1}, "why", a, b, {"1": {"before": 6, "after": 1}, "2": {"before": 2, "after": 2}})
+    store.add_decision(
+        "suppress", {"sid": 1}, "why", a, b, {"1": {"before": 6, "after": 1}, "2": {"before": 2, "after": 2}}
+    )
     md = export_markdown(store)
     assert "| 1 | 6 | 1 | −83% |" in md and "| 2 | 2 | 2 | no change |" in md
 
 
 def test_bars_share_one_scale_across_runs(store):
     base = add_run(store, summary={"total": 6, "by_sid": [sid_row(3, "syn", 6)], "stream_caveats": {}})
-    add_run(store, kind="tuning", parent_run=base, summary={"total": 1, "by_sid": [sid_row(3, "syn", 1)], "stream_caveats": {}})
+    add_run(
+        store,
+        kind="tuning",
+        parent_run=base,
+        summary={"total": 1, "by_sid": [sid_row(3, "syn", 1)], "stream_caveats": {}},
+    )
     md = export_markdown(store)
     assert "| 3 | syn | 6 | ██████████ |" in md
     assert "| 3 | syn | 1 | ██░░░░░░░░ |" in md  # 1 of the report-wide peak of 6, not a full-looking bar of its own

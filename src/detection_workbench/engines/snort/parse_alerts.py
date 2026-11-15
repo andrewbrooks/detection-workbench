@@ -1,4 +1,5 @@
 """Parse Snort 3 alert_json output into normalized alerts and a summary."""
+
 from __future__ import annotations
 
 import json
@@ -19,13 +20,26 @@ def _datetime(seconds: int, timestamp: str) -> str:
 
 def normalize(raw: dict, idx: int) -> dict:
     return {
-        "alert_idx": idx, "datetime": _datetime(int(raw.get("seconds", 0)), str(raw.get("timestamp", ""))),
-        "seconds": raw.get("seconds"), "pkt_num": raw.get("pkt_num"), "pkt_gen": raw.get("pkt_gen"),
-        "proto": raw.get("proto"), "dir": raw.get("dir"), "src_ip": raw.get("src_addr"),
-        "src_port": raw.get("src_port"), "dst_ip": raw.get("dst_addr"), "dst_port": raw.get("dst_port"),
-        "service": raw.get("service"), "gid": raw.get("gid"), "sid": raw.get("sid"), "rev": raw.get("rev"),
-        "msg": raw.get("msg"), "class": raw.get("class"), "priority": raw.get("priority"),
-        "action": raw.get("action"), "b64_data": raw.get("b64_data", ""),
+        "alert_idx": idx,
+        "datetime": _datetime(int(raw.get("seconds", 0)), str(raw.get("timestamp", ""))),
+        "seconds": raw.get("seconds"),
+        "pkt_num": raw.get("pkt_num"),
+        "pkt_gen": raw.get("pkt_gen"),
+        "proto": raw.get("proto"),
+        "dir": raw.get("dir"),
+        "src_ip": raw.get("src_addr"),
+        "src_port": raw.get("src_port"),
+        "dst_ip": raw.get("dst_addr"),
+        "dst_port": raw.get("dst_port"),
+        "service": raw.get("service"),
+        "gid": raw.get("gid"),
+        "sid": raw.get("sid"),
+        "rev": raw.get("rev"),
+        "msg": raw.get("msg"),
+        "class": raw.get("class"),
+        "priority": raw.get("priority"),
+        "action": raw.get("action"),
+        "b64_data": raw.get("b64_data", ""),
     }
 
 
@@ -71,14 +85,28 @@ def parse_alert_file(path: Path, out_jsonl: Path, max_alerts: int) -> dict:
     rows = []
     for key, n in by_sid.most_common():
         gid, sid, rev = key
-        rows.append({"gid": gid, "sid": sid, "rev": rev, "msg": msgs[key], "count": n,
-                     "distinct_sources": len(srcs[key]), "distinct_destinations": len(dsts[key]),
-                     "top_source": srcs[key].most_common(1)[0][0],
-                     "top_source_share": round(srcs[key].most_common(1)[0][1] / n, 4)})
+        rows.append(
+            {
+                "gid": gid,
+                "sid": sid,
+                "rev": rev,
+                "msg": msgs[key],
+                "count": n,
+                "distinct_sources": len(srcs[key]),
+                "distinct_destinations": len(dsts[key]),
+                "top_source": srcs[key].most_common(1)[0][0],
+                "top_source_share": round(srcs[key].most_common(1)[0][1] / n, 4),
+            }
+        )
     all_src, all_dst = Counter(), Counter()
     for c in srcs.values():
         all_src.update(c)
     for c in dsts.values():
         all_dst.update(c)
-    return {"total": total, "truncated": truncated, "by_sid": rows,
-            "top_sources": all_src.most_common(10), "top_destinations": all_dst.most_common(10)}
+    return {
+        "total": total,
+        "truncated": truncated,
+        "by_sid": rows,
+        "top_sources": all_src.most_common(10),
+        "top_destinations": all_dst.most_common(10),
+    }

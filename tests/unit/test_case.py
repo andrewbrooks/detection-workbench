@@ -113,8 +113,10 @@ def test_finding_lifecycle_and_refs(store):
 
 
 def test_decision_and_note(store):
-    a, _ = store.allocate_run(); store.record_run({"id": a, "kind": "run", "status": "ok"})
-    b, _ = store.allocate_run(); store.record_run({"id": b, "kind": "tuning", "status": "ok"})
+    a, _ = store.allocate_run()
+    store.record_run({"id": a, "kind": "run", "status": "ok"})
+    b, _ = store.allocate_run()
+    store.record_run({"id": b, "kind": "tuning", "status": "ok"})
     d = store.add_decision("suppress", {"sid": 1}, "known scanner", a, b, {"1": {"before": 9, "after": 0}})
     assert d["id"] == "d-0001" and d["status"] == "proposed"
     assert store.add_note("hello", "user")["id"] == "n-0001"
@@ -146,7 +148,8 @@ def test_schema_version_checks():
 
 def test_store_refuses_newer_schema(store):
     p = store.root / "notes.json"
-    d = json.loads(p.read_text()); d["schema_version"] = 99
+    d = json.loads(p.read_text())
+    d["schema_version"] = 99
     p.write_text(json.dumps(d))
     with pytest.raises(SchemaError):
         store.add_note("x")
@@ -154,14 +157,43 @@ def test_store_refuses_newer_schema(store):
 
 def _run_with_alerts(store):
     rid, d = store.allocate_run()
-    (d / "results" / "alerts.jsonl").write_text(json.dumps({
-        "alert_idx": 0, "datetime": "2023-11-14T22:13:20.050000Z", "seconds": 1700000000, "pkt_num": 6,
-        "pkt_gen": "raw", "proto": "TCP", "dir": "C2S", "src_ip": "10.0.4.20", "src_port": 40000,
-        "dst_ip": "203.0.113.5", "dst_port": 80, "service": "http", "gid": 1, "sid": 1000020, "rev": 1,
-        "msg": "WBTEST, with comma | pipe", "class": "none", "priority": 0, "action": "allow",
-        "b64_data": ""}) + "\n")
-    store.record_run({"id": rid, "kind": "run", "engine": "snort", "status": "ok",
-                      "results": {"alerts": "results/alerts.jsonl"}, "totals": {"alerts": 1}})
+    (d / "results" / "alerts.jsonl").write_text(
+        json.dumps(
+            {
+                "alert_idx": 0,
+                "datetime": "2023-11-14T22:13:20.050000Z",
+                "seconds": 1700000000,
+                "pkt_num": 6,
+                "pkt_gen": "raw",
+                "proto": "TCP",
+                "dir": "C2S",
+                "src_ip": "10.0.4.20",
+                "src_port": 40000,
+                "dst_ip": "203.0.113.5",
+                "dst_port": 80,
+                "service": "http",
+                "gid": 1,
+                "sid": 1000020,
+                "rev": 1,
+                "msg": "WBTEST, with comma | pipe",
+                "class": "none",
+                "priority": 0,
+                "action": "allow",
+                "b64_data": "",
+            }
+        )
+        + "\n"
+    )
+    store.record_run(
+        {
+            "id": rid,
+            "kind": "run",
+            "engine": "snort",
+            "status": "ok",
+            "results": {"alerts": "results/alerts.jsonl"},
+            "totals": {"alerts": 1},
+        }
+    )
     return rid
 
 
@@ -182,8 +214,16 @@ def test_markdown_report(store, pcap):
     rid = _run_with_alerts(store)
     store.add_finding("noisy", [rid], [e["id"]])
     md = export_markdown(store)
-    for s in ("# Noisy rule 1000042", "## Evidence", e["sha256"], "## Findings", "noisy", "## Decisions",
-              "## Appendix: runs", rid):
+    for s in (
+        "# Noisy rule 1000042",
+        "## Evidence",
+        e["sha256"],
+        "## Findings",
+        "noisy",
+        "## Decisions",
+        "## Appendix: runs",
+        rid,
+    ):
         assert s in md
 
 

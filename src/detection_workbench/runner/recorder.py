@@ -1,4 +1,5 @@
 """Wrap an engine call in an immutable run record. Plugins never touch the case store."""
+
 from __future__ import annotations
 
 import shutil
@@ -11,8 +12,14 @@ from ..engines.base import Engine, EngineResult
 from ..runner.runner import RunContext
 
 
-def run_recorded(store: CaseStore, engine: Engine, kind: str, work: Callable[[RunContext], EngineResult],
-                 inputs: list[dict], parent_run: str | None = None) -> tuple[str, EngineResult]:
+def run_recorded(
+    store: CaseStore,
+    engine: Engine,
+    kind: str,
+    work: Callable[[RunContext], EngineResult],
+    inputs: list[dict],
+    parent_run: str | None = None,
+) -> tuple[str, EngineResult]:
     """Allocate a run directory, execute `work`, write run.json.
 
     Bad caller input (ValueError, including config/tuning validation errors) removes the empty run
@@ -36,13 +43,26 @@ def run_recorded(store: CaseStore, engine: Engine, kind: str, work: Callable[[Ru
         failure = e
     raw = res.raw
     doc = {
-        "id": rid, "kind": kind, "engine": engine.name, "engine_version": ver.version, "backend": ctx.backend,
-        "argv": res.argv, "extra_argv": res.extra_argv, "inputs": inputs, "rules": res.rules, "config": res.config,
-        "started": started, "finished": now(),
+        "id": rid,
+        "kind": kind,
+        "engine": engine.name,
+        "engine_version": ver.version,
+        "backend": ctx.backend,
+        "argv": res.argv,
+        "extra_argv": res.extra_argv,
+        "inputs": inputs,
+        "rules": res.rules,
+        "config": res.config,
+        "started": started,
+        "finished": now(),
         "duration_s": raw.duration_s if raw else round(time.monotonic() - t0, 3),
-        "exit_code": raw.exit_code if raw else None, "timed_out": bool(raw and raw.timed_out),
-        "status": res.status, "error_excerpt": res.error_excerpt[:2048], "results": res.results,
-        "totals": res.totals, "parent_run": parent_run,
+        "exit_code": raw.exit_code if raw else None,
+        "timed_out": bool(raw and raw.timed_out),
+        "status": res.status,
+        "error_excerpt": res.error_excerpt[:2048],
+        "results": res.results,
+        "totals": res.totals,
+        "parent_run": parent_run,
     }
     if ctx.backend == "docker":
         doc["docker_image"] = ctx.cfg.snort.docker_image  # the pinned base image

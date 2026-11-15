@@ -1,4 +1,5 @@
 """Input-handling hardening: rule includes, Docker mount specs, evidence metadata, text caps."""
+
 import pytest
 
 from detection_workbench.case.model import MAX_TEXT_CHARS
@@ -13,14 +14,17 @@ RULE = 'alert tcp any any -> any any ( msg:"x"; content:"a"; sid:1000001; rev:1;
 
 
 # ---- include directives --------------------------------------------------------------
-@pytest.mark.parametrize("text,lines", [
-    ("include /etc/passwd\n" + RULE, [1]),
-    (RULE + "\n  INCLUDE other.rules\n", [2]),
-    ("# include nothing\n" + RULE, []),
-    (RULE, []),
-    ('alert tcp any any -> any any ( msg:"includes are fine in msg"; sid:2; rev:1; )', []),
-    ("includes_not_a_directive", []),
-])
+@pytest.mark.parametrize(
+    "text,lines",
+    [
+        ("include /etc/passwd\n" + RULE, [1]),
+        (RULE + "\n  INCLUDE other.rules\n", [2]),
+        ("# include nothing\n" + RULE, []),
+        (RULE, []),
+        ('alert tcp any any -> any any ( msg:"includes are fine in msg"; sid:2; rev:1; )', []),
+        ("includes_not_a_directive", []),
+    ],
+)
 def test_find_includes(text, lines):
     assert find_includes(text) == lines
 
@@ -56,7 +60,9 @@ def dctx(tmp_path):
     return RunContext(run_dir=tmp_path, backend="docker", cfg=Config(), etc_dir="/x", name="dw-t")
 
 
-@pytest.mark.parametrize("name", ["a:b.pcap", "x:/etc:rw.pcap", "a,b.pcap", 'q"uote.pcap', "new\nline.pcap", "tab\t.pcap"])
+@pytest.mark.parametrize(
+    "name", ["a:b.pcap", "x:/etc:rw.pcap", "a,b.pcap", 'q"uote.pcap', "new\nline.pcap", "tab\t.pcap"]
+)
 def test_unsafe_mount_paths_are_refused(dctx, tmp_path, name):
     with pytest.raises(PathError, match="cannot be mounted safely"):
         dctx.input_arg(tmp_path / name)

@@ -3,14 +3,14 @@
 With 7-digit SIDs the gid and sid columns run together ("11000042" is gid 1, sid 1000042; `rev` is
 its own column), so the split is resolved against the (gid, sid) pairs loaded from the rules file.
 """
+
 from __future__ import annotations
 
 import re
 
 _HEADER = re.compile(r"^rule profile \(")
 _RULE_SID = re.compile(r"\bsid\s*:\s*(\d+)\s*;")
-COLUMNS = ("checks", "matches", "alerts", "time_us", "avg_check", "avg_match", "avg_non_match",
-           "timeouts", "suspends")
+COLUMNS = ("checks", "matches", "alerts", "time_us", "avg_check", "avg_match", "avg_non_match", "timeouts", "suspends")
 
 
 def known_rules(rules_text: str) -> set[tuple[int, int]]:
@@ -24,8 +24,11 @@ def known_rules(rules_text: str) -> set[tuple[int, int]]:
 
 
 def _split_gid_sid(blob: str, known: set[tuple[int, int]]) -> tuple[int, int] | None:
-    hits = {(int(blob[:i]), int(blob[i:])) for i in range(1, len(blob))
-            if not blob[i:].startswith("0") and (int(blob[:i]), int(blob[i:])) in known}
+    hits = {
+        (int(blob[:i]), int(blob[i:]))
+        for i in range(1, len(blob))
+        if not blob[i:].startswith("0") and (int(blob[:i]), int(blob[i:])) in known
+    }
     return next(iter(hits)) if len(hits) == 1 else None
 
 

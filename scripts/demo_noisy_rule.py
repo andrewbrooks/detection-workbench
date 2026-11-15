@@ -3,6 +3,7 @@ find the noise, propose a fix, prove it with before/after counts, export the cas
 
 Run: uv run scripts/demo_noisy_rule.py      (needs Docker with the pinned Snort image, or native Snort 3)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -33,8 +34,10 @@ async def main() -> int:
     cfg = work / "config.toml"
     cfg.write_text(f'case_dir = "{work / "cases"}"\nallowed_roots = ["{FIX}"]\n')
     params = StdioServerParameters(
-        command=sys.executable, args=["-m", "detection_workbench.server"],
-        env={"PATH": os.environ.get("PATH", ""), "HOME": os.environ.get("HOME", ""), "DW_CONFIG": str(cfg)})
+        command=sys.executable,
+        args=["-m", "detection_workbench.server"],
+        env={"PATH": os.environ.get("PATH", ""), "HOME": os.environ.get("HOME", ""), "DW_CONFIG": str(cfg)},
+    )
 
     async with stdio_client(params) as (r, w), ClientSession(r, w) as s:
         await s.initialize()
@@ -70,16 +73,30 @@ async def main() -> int:
         say(f"noisiest: sid {top['sid']} ({top['count']} hits, {top['top_source_share']:.0%} from {top['top_source']})")
         first = (await call("get_alerts", run_id=before["run_id"], sid=top["sid"], limit=1))["alerts"][0]
         ex = await call("explain_alert", run_id=before["run_id"], alert_idx=first["alert_idx"])
-        print("   matched:", [c["option"] for c in ex["contents"]], "->", ex["contents"][0].get("wire_reassembled", {}).get("found"))
-        f1 = await call("add_finding", run_ids=[before["run_id"]], evidence_ids=[pcap, rules],
-                        statement=f"SID {top['sid']} fires {top['count']} times, {top['top_source_share']:.0%} from {top['top_source']}; "
-                                  "it matches any GET, so it is too broad.")
+        print(
+            "   matched:",
+            [c["option"] for c in ex["contents"]],
+            "->",
+            ex["contents"][0].get("wire_reassembled", {}).get("found"),
+        )
+        f1 = await call(
+            "add_finding",
+            run_ids=[before["run_id"]],
+            evidence_ids=[pcap, rules],
+            statement=f"SID {top['sid']} fires {top['count']} times, {top['top_source_share']:.0%} from {top['top_source']}; "
+            "it matches any GET, so it is too broad.",
+        )
 
-        fix = ('alert http any any -> any any ( msg:"LOCAL GET to /download"; flow:to_server,established; '
-               'http_uri; content:"/download/",fast_pattern; sid:1000042; rev:2; classtype:web-application-activity; )')
-        t = await call("test_tuning", before_run_id=before["run_id"],
-                       change={"kind": "rule_edit", "sid": 1000042, "rule": fix},
-                       reason="Anchor on the /download/ path instead of matching every GET")
+        fix = (
+            'alert http any any -> any any ( msg:"LOCAL GET to /download"; flow:to_server,established; '
+            'http_uri; content:"/download/",fast_pattern; sid:1000042; rev:2; classtype:web-application-activity; )'
+        )
+        t = await call(
+            "test_tuning",
+            before_run_id=before["run_id"],
+            change={"kind": "rule_edit", "sid": 1000042, "rule": fix},
+            reason="Anchor on the /download/ path instead of matching every GET",
+        )
         say(f"test_tuning ({t['before_run']} -> {t['after_run']}):")
         for sid, c in t["counts"].items():
             print(f"   sid {sid:>8}  {c['before']:>4} -> {c['after']:>4}")
@@ -93,19 +110,27 @@ async def main() -> int:
         say(f"accepted {t['decision_id']}; exported to {ex['written'][0]}")
         print("   " + ex["rules"].strip().replace("\n", "\n   "))
         await call("update_finding", finding_id=f1["id"], status="confirmed")
-        await call("add_finding", run_ids=[t["after_run"]],
-                   statement=f"Rewrite of 1000042 removes {t['counts']['1000042']['before'] - t['counts']['1000042']['after']} "
-                             "hits on this capture and keeps the marker alert (sid 1000001). One synthetic capture "
-                             "says little about production traffic.")
+        await call(
+            "add_finding",
+            run_ids=[t["after_run"]],
+            statement=f"Rewrite of 1000042 removes {t['counts']['1000042']['before'] - t['counts']['1000042']['after']} "
+            "hits on this capture and keeps the marker alert (sid 1000001). One synthetic capture "
+            "says little about production traffic.",
+        )
 
         cut = t["counts"]["1000042"]
-        await call("update_case", status="closed", summary=(
-            f"**Question.** Why is SID 1000042 so noisy, and can it be fixed without losing the real detection?\n\n"
-            f"**Findings.** SID 1000042 fired {top['count']} times ({top['top_source_share']:.0%} from {top['top_source']}) "
-            f"because it matches any GET (f-0001, run {before['run_id']}).\n\n"
-            f"**Tested change.** Anchoring it on `/download/` takes it from {cut['before']} to {cut['after']} alerts and "
-            f"leaves SID 1000001 unchanged (run {t['after_run']}, decision {t['decision_id']}).\n\n"
-            "**Limits.** One synthetic capture; it shows the change works, not that the anchor is right for production."))
+        await call(
+            "update_case",
+            status="closed",
+            summary=(
+                f"**Question.** Why is SID 1000042 so noisy, and can it be fixed without losing the real detection?\n\n"
+                f"**Findings.** SID 1000042 fired {top['count']} times ({top['top_source_share']:.0%} from {top['top_source']}) "
+                f"because it matches any GET (f-0001, run {before['run_id']}).\n\n"
+                f"**Tested change.** Anchoring it on `/download/` takes it from {cut['before']} to {cut['after']} alerts and "
+                f"leaves SID 1000001 unchanged (run {t['after_run']}, decision {t['decision_id']}).\n\n"
+                "**Limits.** One synthetic capture; it shows the change works, not that the anchor is right for production."
+            ),
+        )
         out = await call("export_case", format="markdown")
         csv = await call("export_case", format="timesketch_csv")
         say("exported")

@@ -3,6 +3,7 @@
 Every function either returns a Lua literal that is safe to embed or raises LuaValueError.
 Nothing here ever builds a command-line `--lua` string; values land in files in the run dir.
 """
+
 from __future__ import annotations
 
 import ipaddress
@@ -15,9 +16,22 @@ class LuaValueError(ValueError):
 
 
 _PLAIN = re.compile(r"^[A-Za-z0-9_.:/@%+=,!$\[\] -]*$")  # no quotes, backslash, ';', '-' pairs checked below
-ALLOWED_VARS = frozenset({"HOME_NET", "EXTERNAL_NET", "HTTP_PORTS", "SSH_PORTS", "FILE_DATA_PORTS",
-                          "SIP_PORTS", "ORACLE_PORTS", "GTP_PORTS", "MODBUS_PORTS", "DNP3_PORTS",
-                          "CIP_PORTS", "AIM_SERVERS"})
+ALLOWED_VARS = frozenset(
+    {
+        "HOME_NET",
+        "EXTERNAL_NET",
+        "HTTP_PORTS",
+        "SSH_PORTS",
+        "FILE_DATA_PORTS",
+        "SIP_PORTS",
+        "ORACLE_PORTS",
+        "GTP_PORTS",
+        "MODBUS_PORTS",
+        "DNP3_PORTS",
+        "CIP_PORTS",
+        "AIM_SERVERS",
+    }
+)
 MAX_STR = 512
 
 

@@ -28,8 +28,11 @@ def test_split_options_honors_quotes():
 
 
 def test_parse_rule_options_and_buffers():
-    r = parse_rule('alert http any any -> any any ( msg:"m"; http_uri; content:"WB",fast_pattern,nocase; '
-                   'content:"x",offset 2,depth 4; pcre:"/a.c/i"; service:http; sid:7; rev:3; )', 4)
+    r = parse_rule(
+        'alert http any any -> any any ( msg:"m"; http_uri; content:"WB",fast_pattern,nocase; '
+        'content:"x",offset 2,depth 4; pcre:"/a.c/i"; service:http; sid:7; rev:3; )',
+        4,
+    )
     assert (r.sid, r.rev, r.msg, r.gid, r.line, r.services) == (7, 3, "m", 1, 4, ["http"])
     c1, c2 = r.contents
     assert c1.buffer == "http_uri" and c1.fast_pattern and c1.nocase and not c1.anchored
@@ -65,13 +68,15 @@ def test_lint_missing_sid_is_flagged_even_though_snort_is_silent():
 
 
 def test_lint_checks():
-    text = "\n".join([
-        'alert tcp any any -> any 80 ( msg:"low sid"; content:"abc"; sid:5; rev:1; )',
-        'alert tcp any any -> any 80 ( content:"abc"; sid:1000001; )',
-        'alert tcp any any -> any 80 ( msg:"http buf on tcp"; http_uri; content:"a"; sid:1000002; rev:1; )',
-        'alert tcp any any -> any 80 ( msg:"no content"; flags:S; sid:1000003; rev:1; )',
-        'alert tcp any any -> any 80 ( msg:"dup"; content:"abc"; sid:1000001; rev:1; )',
-    ])
+    text = "\n".join(
+        [
+            'alert tcp any any -> any 80 ( msg:"low sid"; content:"abc"; sid:5; rev:1; )',
+            'alert tcp any any -> any 80 ( content:"abc"; sid:1000001; )',
+            'alert tcp any any -> any 80 ( msg:"http buf on tcp"; http_uri; content:"a"; sid:1000002; rev:1; )',
+            'alert tcp any any -> any 80 ( msg:"no content"; flags:S; sid:1000003; rev:1; )',
+            'alert tcp any any -> any 80 ( msg:"dup"; content:"abc"; sid:1000001; rev:1; )',
+        ]
+    )
     msgs = " | ".join(d["error"] for d in lint_rules(text))
     for s in ("below 1,000,000", "No rev", "No msg", "neither 'alert http'", "No positive content", "Duplicate sid"):
         assert s in msgs
@@ -90,7 +95,9 @@ def test_lint_unparseable():
 def test_hexdump_bounded_and_printable():
     h = hexdump(b"GET /\x00\xff" + b"A" * 40, 20)
     assert h["shown"] == 20 and h["total"] == 47 and h["truncated"] == 27 and len(h["lines"]) == 2
-    assert h["lines"][0].startswith("00000000  47 45 54 20 2f 00 ff 41") and h["lines"][0].endswith("|GET /..AAAAAAAAA|")
+    assert h["lines"][0].startswith("00000000  47 45 54 20 2f 00 ff 41") and h["lines"][0].endswith(
+        "|GET /..AAAAAAAAA|"
+    )
     assert hexdump(b"", 10)["lines"] == [] and hexdump(b"abc", 0)["lines"] == []
 
 
@@ -127,8 +134,10 @@ def test_explain_unknown_rule_and_missing_packet():
 
 def test_explain_pcre_translation():
     a = next(x for x in alerts("alerts_http_marker.jsonl") if x["sid"] == 1000001)
-    rule = parse_rule('alert http any any -> any any ( msg:"p"; http_uri; pcre:"/MARKER-\\d{4}/iR"; '
-                      'pcre:"/(?<=x)(/"; sid:1000001; rev:1; )')
+    rule = parse_rule(
+        'alert http any any -> any any ( msg:"p"; http_uri; pcre:"/MARKER-\\d{4}/iR"; '
+        'pcre:"/(?<=x)(/"; sid:1000001; rev:1; )'
+    )
     ex = explain_alert(rule, a, FIX / "pcaps/http_marker.pcap", 64)
     p1, p2 = ex["pcres"]
     assert p1["evaluated"] and p1["wire_reassembled"]["found"] and "R" in p1["note"]

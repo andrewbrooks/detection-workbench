@@ -1,4 +1,5 @@
 """Reassemble one direction of a TCP flow, keeping a byte -> packet map for match reporting."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -33,8 +34,9 @@ class Reassembled:
         return None
 
 
-def reassemble(path: Path, src: str, sport: int, dst: str, dport: int, max_idx: int,
-               min_ts_us: int | None = None) -> Reassembled:
+def reassemble(
+    path: Path, src: str, sport: int, dst: str, dport: int, max_idx: int, min_ts_us: int | None = None
+) -> Reassembled:
     """Data packets src:sport -> dst:dport with idx <= max_idx and timestamp >= min_ts_us (µs).
 
     Overlaps: first-seen bytes win. Output stops at the first gap in sequence space.

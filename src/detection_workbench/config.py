@@ -1,4 +1,5 @@
 """Workbench configuration: TOML file with defaults, validated on load."""
+
 from __future__ import annotations
 
 import os
@@ -63,7 +64,9 @@ def parse_config(raw: dict) -> Config:
     case_dir = Path(raw.pop("case_dir", DEFAULT_HOME / "cases")).expanduser().resolve()
     roots = tuple(Path(p).expanduser().resolve() for p in raw.pop("allowed_roots", []))
     if any(r == Path(r.anchor) for r in roots):
-        raise ConfigError("allowed_roots must not include the filesystem root; list the directories that hold your evidence")
+        raise ConfigError(
+            "allowed_roots must not include the filesystem root; list the directories that hold your evidence"
+        )
     if raw:
         raise ConfigError(f"unknown top-level key(s): {sorted(raw)}")
     return Config(case_dir=case_dir, allowed_roots=roots, limits=limits, snort=snort)

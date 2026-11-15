@@ -1,4 +1,5 @@
 """Parse `snort -T` diagnostics into {severity, line, sid, error, plain} records."""
+
 from __future__ import annotations
 
 import re
@@ -11,15 +12,39 @@ CASCADE_MSGS = ("syntax error", "unknown rule action", "incomplete rule")
 
 # (regex, plain-language rewrite). First match wins; {0} is the first regex group.
 _PLAIN = [
-    (re.compile(r"unknown rule keyword: (\S+?)\.?$"), "'{0}' is not a Snort 3 rule option. Check the spelling or whether it is a Snort 2 option."),
-    (re.compile(r"unknown rule action"), "The rule header is malformed. The first word must be an action such as alert, and a missing ';' between options is a common cause."),
-    (re.compile(r"^syntax error$"), "Snort could not parse this line. Look for a missing ';' after an option or an unbalanced parenthesis."),
-    (re.compile(r"incomplete rule"), "The rule ends before its closing ')'. Check the line before it for a missing ';' or ')'."),
-    (re.compile(r"pcre2? compile of '(.*)' failed at offset (\d+) : (.*)"), "The pcre pattern does not compile: {2} (at offset {1})."),
+    (
+        re.compile(r"unknown rule keyword: (\S+?)\.?$"),
+        "'{0}' is not a Snort 3 rule option. Check the spelling or whether it is a Snort 2 option.",
+    ),
+    (
+        re.compile(r"unknown rule action"),
+        "The rule header is malformed. The first word must be an action such as alert, and a missing ';' between options is a common cause.",
+    ),
+    (
+        re.compile(r"^syntax error$"),
+        "Snort could not parse this line. Look for a missing ';' after an option or an unbalanced parenthesis.",
+    ),
+    (
+        re.compile(r"incomplete rule"),
+        "The rule ends before its closing ')'. Check the line before it for a missing ';' or ')'.",
+    ),
+    (
+        re.compile(r"pcre2? compile of '(.*)' failed at offset (\d+) : (.*)"),
+        "The pcre pattern does not compile: {2} (at offset {1}).",
+    ),
     (re.compile(r"'(\w+)' must be in (\S+), inclusive"), "'{0}' must be within {1}."),
-    (re.compile(r"duplicates previous rule"), "Another rule already uses this gid:sid. Snort keeps the first one it loaded."),
-    (re.compile(r"has no fast pattern"), "The rule has no content to use as a fast pattern, so Snort must evaluate it on every packet. Add a unique content."),
-    (re.compile(r"Undefined variable|undefined variable"), "The rule uses a variable that is not defined in the config (such as $HOME_NET)."),
+    (
+        re.compile(r"duplicates previous rule"),
+        "Another rule already uses this gid:sid. Snort keeps the first one it loaded.",
+    ),
+    (
+        re.compile(r"has no fast pattern"),
+        "The rule has no content to use as a fast pattern, so Snort must evaluate it on every packet. Add a unique content.",
+    ),
+    (
+        re.compile(r"Undefined variable|undefined variable"),
+        "The rule uses a variable that is not defined in the config (such as $HOME_NET).",
+    ),
     (re.compile(r"PortVar Lookup failed on '(.*)'"), "The rule uses a port variable {0} that is not defined."),
 ]
 
@@ -67,9 +92,15 @@ def parse_validation(text: str, exit_code: int, rules_text: str = "", file_name:
             sid = int(sm.group(1)) if sm else None
         elif g := re.search(r"rule \d+:(\d+):\d+", m.group("msg")) or re.match(r"\d+:(\d+) ", m.group("msg")):
             sid = int(g.group(1))
-        rec = {"severity": sev, "line": line, "sid": sid, "error": m.group("msg"),
-               "plain": plain_message(m.group("msg")), "source": "snort",
-               "rule": lines[line - 1][:300] if line and 0 < line <= len(lines) else None}
+        rec = {
+            "severity": sev,
+            "line": line,
+            "sid": sid,
+            "error": m.group("msg"),
+            "plain": plain_message(m.group("msg")),
+            "source": "snort",
+            "rule": lines[line - 1][:300] if line and 0 < line <= len(lines) else None,
+        }
         (rep.errors if sev == "error" else rep.warnings).append(rec)
     rep.ok = exit_code == 0 and not rep.errors
     return rep

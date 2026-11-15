@@ -1,5 +1,6 @@
 """Read pcap/pcapng with dpkt. Packet indices are 1-based file order, the numbering Snort uses
 for pkt_gen=raw alerts."""
+
 from __future__ import annotations
 
 import socket

@@ -1,5 +1,6 @@
 """Engine plugin interface and registry. Phase 2/3 engines (zeek, tshark, zircolite) implement
 the same protocol and register here; the runner, safety layer and case store do not change."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -21,6 +22,7 @@ class EngineVersion:
 @dataclass
 class EngineResult:
     """Everything the recorder needs to write run.json, plus the tool-facing payload."""
+
     status: str  # ok | error | timeout
     argv: list[str]
     raw: RawRun | None = None

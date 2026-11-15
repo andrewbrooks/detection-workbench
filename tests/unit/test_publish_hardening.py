@@ -1,4 +1,5 @@
 """Safe writes, private case directories, strict config, CSV and report neutralization."""
+
 import csv
 import io
 import json
@@ -66,6 +67,7 @@ def test_write_rules_file_race_is_reported_not_followed(tmp_path, monkeypatch):
     target = root.resolve() / "new.rules"
 
     from detection_workbench import workbench as wb_mod
+
     real = wb_mod.resolve_write
 
     def vetted_then_swapped(*a, **kw):
@@ -88,7 +90,14 @@ def test_case_directories_are_owner_only(tmp_path):
     store = CaseStore.create(tmp_path / "cases", "private")
     rid, run_dir = store.allocate_run()
     assert mode(tmp_path / "cases") == 0o700 and mode(store.root) == 0o700
-    for p in (store.root / "runs", store.root / "exports", run_dir, run_dir / "cfg", run_dir / "out", run_dir / "results"):
+    for p in (
+        store.root / "runs",
+        store.root / "exports",
+        run_dir,
+        run_dir / "cfg",
+        run_dir / "out",
+        run_dir / "results",
+    ):
         assert mode(p) == 0o700, p
     assert mode(store.root / "case.json") == 0o600  # JSON files are written via mkstemp
 
@@ -131,10 +140,26 @@ def test_main_reports_a_bad_config_without_a_traceback(monkeypatch, capsys):
 def case_with(tmp_path, msg, statement):
     store = CaseStore.create(tmp_path / "cases", "csv")
     rid, d = store.allocate_run()
-    (d / "results" / "alerts.jsonl").write_text(json.dumps({
-        "alert_idx": 0, "datetime": "2023-11-14T22:13:20.000000Z", "pkt_num": 1, "pkt_gen": "raw", "proto": "TCP",
-        "src_ip": "1.1.1.1", "src_port": 1, "dst_ip": "2.2.2.2", "dst_port": 2, "gid": 1, "sid": 1000001, "rev": 1,
-        "msg": msg}) + "\n")
+    (d / "results" / "alerts.jsonl").write_text(
+        json.dumps(
+            {
+                "alert_idx": 0,
+                "datetime": "2023-11-14T22:13:20.000000Z",
+                "pkt_num": 1,
+                "pkt_gen": "raw",
+                "proto": "TCP",
+                "src_ip": "1.1.1.1",
+                "src_port": 1,
+                "dst_ip": "2.2.2.2",
+                "dst_port": 2,
+                "gid": 1,
+                "sid": 1000001,
+                "rev": 1,
+                "msg": msg,
+            }
+        )
+        + "\n"
+    )
     store.record_run({"id": rid, "kind": "run", "status": "ok", "results": {"alerts": "results/alerts.jsonl"}})
     store.add_finding(statement, [rid], [])
     return store
@@ -175,6 +200,7 @@ def test_guidance_treats_evidence_text_as_data():
 
 def test_registration_swapped_to_a_link_between_check_and_read_is_refused(tmp_path, monkeypatch):
     from detection_workbench import workbench as wb_mod
+
     root = tmp_path / "allowed"
     root.mkdir()
     secret = tmp_path / "outside-secret.txt"
@@ -199,6 +225,7 @@ def test_registration_swapped_to_a_link_between_check_and_read_is_refused(tmp_pa
 
 def test_registered_evidence_records_the_hash_of_what_was_read(tmp_path):
     import hashlib
+
     root = tmp_path / "allowed"
     root.mkdir()
     f = root / "rules.rules"

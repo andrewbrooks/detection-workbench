@@ -4,6 +4,7 @@ Snort 3.10 does not run service inspectors on TCP data its peer never acknowledg
 A6b), so rules on service buffers can silently miss on such flows. This scans the pcap up front so
 run_pcap can say so instead of returning a quietly incomplete result.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -74,10 +75,22 @@ def analyze_streams(path: Path, max_examples: int = 10) -> dict:
                     flow_one_sided = True
                 if len(examples) < max_examples:
                     peer = key[1] if key[0] == (ip, port) else key[0]
-                    examples.append({"src": ip, "src_port": port, "dst": peer[0], "dst_port": peer[1],
-                                     "first_data_pkt": d.first_data_idx,
-                                     "reason": "no packets from peer" if not peers else "peer never ACKed the data"})
+                    examples.append(
+                        {
+                            "src": ip,
+                            "src_port": port,
+                            "dst": peer[0],
+                            "dst_port": peer[1],
+                            "first_data_pkt": d.first_data_idx,
+                            "reason": "no packets from peer" if not peers else "peer never ACKed the data",
+                        }
+                    )
         unacked += flow_unacked
         one_sided += flow_one_sided
-    return {"tcp_flows": len(flows), "unacked_flows": unacked, "one_sided_flows": one_sided,
-            "examples": examples, "flows_truncated": truncated}
+    return {
+        "tcp_flows": len(flows),
+        "unacked_flows": unacked,
+        "one_sided_flows": one_sided,
+        "examples": examples,
+        "flows_truncated": truncated,
+    }

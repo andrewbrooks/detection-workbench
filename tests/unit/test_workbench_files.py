@@ -1,4 +1,5 @@
 """write_rules_file / export path handling: nothing outside allowed_roots is ever read or written."""
+
 import pytest
 
 from detection_workbench.config import Config
@@ -48,9 +49,9 @@ def test_new_file_inside_roots_is_written(wb):
 def test_existing_file_inside_roots_returns_diff_not_overwrite(wb):
     w, root = wb
     f = root / "mine.rules"
-    f.write_text("alert tcp any any -> any any ( msg:\"old\"; sid:5; rev:1; )\n")
+    f.write_text('alert tcp any any -> any any ( msg:"old"; sid:5; rev:1; )\n')
     out = w.write_rules_file(str(f), NEW)
-    assert out["written"] is False and "-alert tcp any any -> any any ( msg:\"old\"" in out["diff"] and "+" in out["diff"]
+    assert out["written"] is False and '-alert tcp any any -> any any ( msg:"old"' in out["diff"] and "+" in out["diff"]
     assert "old" in f.read_text()
 
 

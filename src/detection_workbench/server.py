@@ -1,4 +1,5 @@
 """MCP server (stdio). Tool bodies live in workbench.py; this file only declares them."""
+
 from __future__ import annotations
 
 import functools
@@ -15,12 +16,14 @@ from .workbench import Workbench, WorkbenchError
 def _tool_errors(fn):
     """Show caller-fixable errors (no active case, path outside allowed_roots, bad argument ...) to the model as
     the tool result, instead of the SDK's generic "Error executing tool" with a traceback in the server log."""
+
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
         try:
             return fn(*args, **kwargs)
         except (WorkbenchError, ValueError) as e:  # case, path, pcap and tuning errors are all ValueErrors
             raise ToolError(str(e)) from None
+
     return wrapper
 
 
@@ -33,7 +36,9 @@ def build_server(cfg: Config | None = None, wb: Workbench | None = None) -> MCPS
     def tool():
         return lambda fn: mcp.tool()(_tool_errors(fn))
 
-    @mcp.prompt(name="detection_engineering", description="How to write, test, explain and tune detections with this workbench.")
+    @mcp.prompt(
+        name="detection_engineering", description="How to write, test, explain and tune detections with this workbench."
+    )
     def detection_engineering() -> str:
         return GUIDANCE
 
@@ -122,9 +127,15 @@ def build_server(cfg: Config | None = None, wb: Workbench | None = None) -> MCPS
         return wb.validate_rules(rules_id, rules_text)
 
     @tool()
-    def run_pcap(pcap_id: str, rules_id: str | None = None, rules_text: str | None = None,
-                 home_net: str | None = None, external_net: str | None = None, flush_one_sided: bool = False,
-                 profile: bool = False) -> dict:
+    def run_pcap(
+        pcap_id: str,
+        rules_id: str | None = None,
+        rules_text: str | None = None,
+        home_net: str | None = None,
+        external_net: str | None = None,
+        flush_one_sided: bool = False,
+        profile: bool = False,
+    ) -> dict:
         """Run rules against a registered pcap. Returns the run id, total alerts, counts by SID with msg, the
         first alerts, and stream_caveats (flows where Snort cannot inspect un-ACKed data). home_net is an IP/CIDR
         or list like '[10.0.0.0/8,192.168.0.0/16]'; no raw Lua is accepted.
@@ -132,8 +143,16 @@ def build_server(cfg: Config | None = None, wb: Workbench | None = None) -> MCPS
         return wb.run_pcap(pcap_id, rules_id, rules_text, home_net, external_net, flush_one_sided, profile)
 
     @tool()
-    def get_alerts(run_id: str, sid: int | None = None, src: str | None = None, dst: str | None = None,
-                   pkt_from: int | None = None, pkt_to: int | None = None, offset: int = 0, limit: int = 50) -> dict:
+    def get_alerts(
+        run_id: str,
+        sid: int | None = None,
+        src: str | None = None,
+        dst: str | None = None,
+        pkt_from: int | None = None,
+        pkt_to: int | None = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> dict:
         """Page or filter a run's alerts by SID, source/destination address or packet range.
         Example: get_alerts(run_id="r-0002", sid=1000042, src="10.0.4.20", limit=20)"""
         return wb.get_alerts(run_id, sid, src, dst, pkt_from, pkt_to, offset, limit)
@@ -178,8 +197,12 @@ def build_server(cfg: Config | None = None, wb: Workbench | None = None) -> MCPS
         return wb.update_decision(decision_id, status)
 
     @tool()
-    def export_tuning(decision_ids: list[str] | None = None, path_prefix: str | None = None, overwrite: bool = False,
-                      include_unaccepted: bool = False) -> dict:
+    def export_tuning(
+        decision_ids: list[str] | None = None,
+        path_prefix: str | None = None,
+        overwrite: bool = False,
+        include_unaccepted: bool = False,
+    ) -> dict:
         """The accepted tuning changes as text to apply: a rules fragment (the edited rules, to replace the rules with the same
         sid) and a config snippet (suppress / event_filter / rate_filter tables to merge into snort.lua). Defaults to every
         accepted decision; a decision that is not accepted is refused unless include_unaccepted=true (a preview). With
@@ -201,6 +224,7 @@ def build_server(cfg: Config | None = None, wb: Workbench | None = None) -> MCPS
         return wb.write_rules_file(path, rules_text, overwrite)
 
     if wb.engine.version().available and wb.engine.has_snort2lua():
+
         @tool()
         def convert_snort2(evidence_id: str) -> dict:
             """Convert a registered Snort 2 rules file or snort.conf with snort2lua. The output stays in the run

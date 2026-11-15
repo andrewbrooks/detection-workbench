@@ -1,4 +1,5 @@
 """CaseStore: JSON files plus an append-only events.jsonl, under a per-case lock."""
+
 from __future__ import annotations
 
 import fcntl
@@ -26,8 +27,7 @@ from .model import (
     slugify,
 )
 
-_DOCS = {"evidence": "evidence.json", "findings": "findings.json",
-         "decisions": "decisions.json", "notes": "notes.json"}
+_DOCS = {"evidence": "evidence.json", "findings": "findings.json", "decisions": "decisions.json", "notes": "notes.json"}
 
 
 class CaseError(ValueError):
@@ -38,7 +38,9 @@ def _check_text(text: str, what: str) -> None:
     if not isinstance(text, str) or not text.strip():
         raise CaseError(f"{what} is empty")
     if len(text) > MAX_TEXT_CHARS:
-        raise CaseError(f"{what} is longer than {MAX_TEXT_CHARS} characters; keep it short and put detail in the summary")
+        raise CaseError(
+            f"{what} is longer than {MAX_TEXT_CHARS} characters; keep it short and put detail in the summary"
+        )
 
 
 def _atomic_write(path: Path, data: dict) -> None:
@@ -88,10 +90,19 @@ class CaseStore:
         (root / "runs").mkdir(mode=0o700)
         (root / "exports").mkdir(mode=0o700)
         t = now()
-        _atomic_write(root / "case.json", {
-            "schema_version": SCHEMA_VERSION, "id": cid, "title": title, "created": t,
-            "updated": t, "status": "open", "summary": "",
-            "next_ids": {"e": 1, "r": 1, "f": 1, "d": 1, "n": 1, "ev": 1}})
+        _atomic_write(
+            root / "case.json",
+            {
+                "schema_version": SCHEMA_VERSION,
+                "id": cid,
+                "title": title,
+                "created": t,
+                "updated": t,
+                "status": "open",
+                "summary": "",
+                "next_ids": {"e": 1, "r": 1, "f": 1, "d": 1, "n": 1, "ev": 1},
+            },
+        )
         _atomic_write(root / "evidence.json", {"schema_version": SCHEMA_VERSION, "items": []})
         for name in ("findings", "decisions", "notes"):
             _atomic_write(root / _DOCS[name], {"schema_version": SCHEMA_VERSION, "items": []})
@@ -134,8 +145,13 @@ class CaseStore:
         return _read(self.root / ("case.json" if name == "case" else _DOCS[name]))
 
     # ---- evidence -----------------------------------------------------
-    def register_evidence(self, path: Path, label: dict | None = None, type_: str | None = None,
-                          fingerprint: tuple[str, int, bytes] | None = None) -> dict:
+    def register_evidence(
+        self,
+        path: Path,
+        label: dict | None = None,
+        type_: str | None = None,
+        fingerprint: tuple[str, int, bytes] | None = None,
+    ) -> dict:
         """`path` must already be resolved and vetted. `fingerprint` is (sha256, size, head bytes) read in one pass through
         safety.verified.fingerprint; without it the file is hashed here by path."""
         path = Path(path)
@@ -152,9 +168,18 @@ class CaseStore:
             for it in ev["items"]:
                 if it["path"] == str(path) and it["sha256"] == digest:
                     return it
-            item = {"id": tx.next_id("evidence"), "path": str(path), "sha256": digest,
-                    "size": fingerprint[1] if fingerprint else path.stat().st_size, "type": det, "detected_by": how,
-                    "registered": now(), "label": label, "copied": False, "copy_path": None}
+            item = {
+                "id": tx.next_id("evidence"),
+                "path": str(path),
+                "sha256": digest,
+                "size": fingerprint[1] if fingerprint else path.stat().st_size,
+                "type": det,
+                "detected_by": how,
+                "registered": now(),
+                "label": label,
+                "copied": False,
+                "copy_path": None,
+            }
             ev["items"].append(item)
             tx.event("evidence.registered", item["id"], {"path": item["path"], "sha256": digest})
             return item
@@ -218,9 +243,16 @@ class CaseStore:
             self.get_evidence(e)
         with self._txn() as tx:
             t = now()
-            item = {"id": tx.next_id("finding"), "statement": statement, "status": "open",
-                    "run_ids": list(run_ids), "evidence_ids": list(evidence_ids),
-                    "created": t, "updated": t, "history": []}
+            item = {
+                "id": tx.next_id("finding"),
+                "statement": statement,
+                "status": "open",
+                "run_ids": list(run_ids),
+                "evidence_ids": list(evidence_ids),
+                "created": t,
+                "updated": t,
+                "history": [],
+            }
             tx.doc("findings")["items"].append(item)
             tx.event("finding.added", item["id"], {"statement": statement})
             return item
@@ -245,17 +277,36 @@ class CaseStore:
             tx.event("finding.updated", finding_id, {"status": it["status"]})
             return it
 
-    def add_decision(self, kind: str, change: dict, reason: str, before_run: str, after_run: str,
-                     counts: dict, status: str = "proposed", counts_omitted: int = 0) -> dict:
+    def add_decision(
+        self,
+        kind: str,
+        change: dict,
+        reason: str,
+        before_run: str,
+        after_run: str,
+        counts: dict,
+        status: str = "proposed",
+        counts_omitted: int = 0,
+    ) -> dict:
         if status not in DECISION_STATUSES:
             raise CaseError(f"status must be one of {DECISION_STATUSES}")
         _check_text(reason, "decision reason")
         self.get_run(before_run)
         self.get_run(after_run)
         with self._txn() as tx:
-            item = {"id": tx.next_id("decision"), "kind": kind, "change": change, "reason": reason,
-                    "before_run": before_run, "after_run": after_run, "counts": counts,
-                    "status": status, "created": now(), "updated": now(), "history": []}
+            item = {
+                "id": tx.next_id("decision"),
+                "kind": kind,
+                "change": change,
+                "reason": reason,
+                "before_run": before_run,
+                "after_run": after_run,
+                "counts": counts,
+                "status": status,
+                "created": now(),
+                "updated": now(),
+                "history": [],
+            }
             if counts_omitted:
                 item["counts_omitted"] = counts_omitted  # unchanged SIDs left out of `counts` to keep the record small
             tx.doc("decisions")["items"].append(item)
@@ -313,8 +364,12 @@ class CaseStore:
                 changed["status"] = status
             if changed:
                 tx.event("case.updated", self.root.name, changed)
-            return {"id": tx._case["id"], "status": tx._case["status"], "summary": tx._case["summary"],
-                    "changed": sorted(changed)}
+            return {
+                "id": tx._case["id"],
+                "status": tx._case["status"],
+                "summary": tx._case["summary"],
+                "changed": sorted(changed),
+            }
 
     def log_event(self, type_: str, ref: str, data: dict) -> None:
         with self._txn() as tx:
@@ -324,14 +379,20 @@ class CaseStore:
     def summary(self, recent_runs: int = 5) -> dict:
         case = self._doc("case")
         return {
-            "id": case["id"], "title": case["title"], "status": case["status"],
-            "created": case["created"], "updated": case["updated"], "summary": case["summary"],
+            "id": case["id"],
+            "title": case["title"],
+            "status": case["status"],
+            "created": case["created"],
+            "updated": case["updated"],
+            "summary": case["summary"],
             "evidence": self._doc("evidence")["items"],
             "findings": self._doc("findings")["items"],
             "decisions": self._doc("decisions")["items"],
             "notes": self._doc("notes")["items"],
-            "recent_runs": [{k: r.get(k) for k in ("id", "kind", "engine", "status", "started", "totals")}
-                            for r in self.list_runs(recent_runs)],
+            "recent_runs": [
+                {k: r.get(k) for k in ("id", "kind", "engine", "status", "started", "totals")}
+                for r in self.list_runs(recent_runs)
+            ],
         }
 
     def events(self) -> list[dict]:

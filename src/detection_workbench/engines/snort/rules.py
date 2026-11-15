@@ -1,19 +1,47 @@
 """Tolerant Snort 3 rule parser. Used for lint, explain_alert and profile splitting; Snort itself
 remains the authority on whether a rule is valid."""
+
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
 
 STICKY_BUFFERS = {
-    "http_uri", "http_raw_uri", "http_header", "http_raw_header", "http_method", "http_client_body",
-    "http_cookie", "http_raw_cookie", "http_stat_code", "http_stat_msg", "http_version", "http_param",
-    "http_trailer", "http_raw_trailer", "http_raw_request", "http_raw_status", "pkt_data", "raw_data",
-    "file_data", "dns_query", "ssl_state", "ssl_version", "ssh_version", "ssh_proto", "vba_data",
-    "js_data", "base64_data", "smtp_command", "smtp_header",
+    "http_uri",
+    "http_raw_uri",
+    "http_header",
+    "http_raw_header",
+    "http_method",
+    "http_client_body",
+    "http_cookie",
+    "http_raw_cookie",
+    "http_stat_code",
+    "http_stat_msg",
+    "http_version",
+    "http_param",
+    "http_trailer",
+    "http_raw_trailer",
+    "http_raw_request",
+    "http_raw_status",
+    "pkt_data",
+    "raw_data",
+    "file_data",
+    "dns_query",
+    "ssl_state",
+    "ssl_version",
+    "ssh_version",
+    "ssh_proto",
+    "vba_data",
+    "js_data",
+    "base64_data",
+    "smtp_command",
+    "smtp_header",
 }
-_HEADER = re.compile(r"^\s*(?P<action>\w+)\s+(?P<proto>\S+)\s+(?P<src>\S+)\s+(?P<sport>\S+)\s+"
-                     r"(?P<dir>->|<>)\s+(?P<dst>\S+)\s+(?P<dport>\S+)\s*\((?P<body>.*)\)\s*$", re.S)
+_HEADER = re.compile(
+    r"^\s*(?P<action>\w+)\s+(?P<proto>\S+)\s+(?P<src>\S+)\s+(?P<sport>\S+)\s+"
+    r"(?P<dir>->|<>)\s+(?P<dst>\S+)\s+(?P<dport>\S+)\s*\((?P<body>.*)\)\s*$",
+    re.S,
+)
 _HEX = re.compile(r"\|([0-9A-Fa-f\s]*)\|")
 
 
@@ -76,11 +104,11 @@ def decode_content(s: str) -> bytes:
             if j == -1:
                 out += s[i:].encode("latin-1", "replace")
                 break
-            hexs = re.sub(r"\s+", "", s[i + 1:j])
+            hexs = re.sub(r"\s+", "", s[i + 1 : j])
             try:
                 out += bytes.fromhex(hexs)
             except ValueError:
-                out += s[i:j + 1].encode("latin-1", "replace")
+                out += s[i : j + 1].encode("latin-1", "replace")
             i = j + 1
         elif s[i] == "\\" and i + 1 < len(s):
             out += s[i + 1].encode("latin-1", "replace")
@@ -96,13 +124,19 @@ def split_options(body: str) -> list[str]:
     parts, cur, q, esc = [], [], False, False
     for ch in body:
         if esc:
-            cur.append(ch); esc = False; continue
+            cur.append(ch)
+            esc = False
+            continue
         if ch == "\\":
-            cur.append(ch); esc = True; continue
+            cur.append(ch)
+            esc = True
+            continue
         if ch == '"':
             q = not q
         if ch == ";" and not q:
-            parts.append("".join(cur)); cur = []; continue
+            parts.append("".join(cur))
+            cur = []
+            continue
         cur.append(ch)
     if "".join(cur).strip():
         parts.append("".join(cur))
@@ -113,13 +147,19 @@ def _split_commas(s: str) -> list[str]:
     parts, cur, q, esc = [], [], False, False
     for ch in s:
         if esc:
-            cur.append(ch); esc = False; continue
+            cur.append(ch)
+            esc = False
+            continue
         if ch == "\\":
-            cur.append(ch); esc = True; continue
+            cur.append(ch)
+            esc = True
+            continue
         if ch == '"':
             q = not q
         if ch == "," and not q:
-            parts.append("".join(cur)); cur = []; continue
+            parts.append("".join(cur))
+            cur = []
+            continue
         cur.append(ch)
     parts.append("".join(cur))
     return [p.strip() for p in parts]
@@ -163,7 +203,14 @@ def parse_rule(text: str, line: int = 0) -> Rule:
         r.parsed = False
         return r
     r.action, r.proto, r.src, r.sport, r.direction, r.dst, r.dport = (
-        m["action"], m["proto"], m["src"], m["sport"], m["dir"], m["dst"], m["dport"])
+        m["action"],
+        m["proto"],
+        m["src"],
+        m["sport"],
+        m["dir"],
+        m["dst"],
+        m["dport"],
+    )
     buffer, last_content = None, None
     for opt in split_options(m["body"]):
         name, sep, val = opt.partition(":")

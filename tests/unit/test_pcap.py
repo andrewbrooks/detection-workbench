@@ -67,15 +67,20 @@ def test_reassemble_respects_timestamp_floor_and_max_idx():
 
 def test_reassemble_multi_segment_overlap_and_gap(tmp_path):
     from scapy.all import IP, TCP, Ether, Raw, wrpcap
+
     E = Ether()
+
     def seg(seq, data, t):
         p = E / IP(src="1.1.1.1", dst="2.2.2.2") / TCP(sport=1000, dport=80, flags="PA", seq=seq) / Raw(data)
         p.time = 1_700_000_000 + t
         return p
+
     out = tmp_path / "m.pcap"
     # in-order "AAAA", out-of-order "CCCC" before "BBBB", retransmit of "AAAA" with different bytes, then a gap
-    wrpcap(str(out), [seg(100, b"AAAA", 0), seg(108, b"CCCC", 1), seg(104, b"BBBB", 2),
-                      seg(100, b"XXXX", 3), seg(200, b"ZZZZ", 4)])
+    wrpcap(
+        str(out),
+        [seg(100, b"AAAA", 0), seg(108, b"CCCC", 1), seg(104, b"BBBB", 2), seg(100, b"XXXX", 3), seg(200, b"ZZZZ", 4)],
+    )
     r = reassemble(out, "1.1.1.1", 1000, "2.2.2.2", 80, max_idx=99)
     assert r.data == b"AAAABBBBCCCC" and r.gaps == 1
     assert r.locate(5) == (3, 1) and r.locate(9) == (2, 1) and r.locate(0) == (1, 0)

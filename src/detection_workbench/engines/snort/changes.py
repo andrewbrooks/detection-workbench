@@ -7,6 +7,7 @@
 
 Everything here is pure: text in, text out. Nothing reads files or runs anything.
 """
+
 from __future__ import annotations
 
 import difflib
@@ -141,8 +142,10 @@ def build_export(decisions: list[dict]) -> dict:
         rules = "\n".join(body) + "\n"
     config = ""
     if tables:
-        body = ["-- Detection Workbench: accepted configuration changes.",
-                "-- Merge each table into the table of the same name in snort.lua (create it if you have none)."]
+        body = [
+            "-- Detection Workbench: accepted configuration changes.",
+            "-- Merge each table into the table of the same name in snort.lua (create it if you have none).",
+        ]
         for table in sorted(tables):
             body.append(f"{table} = {{")
             for did, reason, record in tables[table]:

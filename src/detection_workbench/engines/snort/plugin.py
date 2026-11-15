@@ -1,4 +1,5 @@
 """Snort 3 engine plugin: validate and run against a pcap, native or Docker."""
+
 from __future__ import annotations
 
 import hashlib
@@ -28,8 +29,10 @@ _ETC_CANDIDATES = ("/usr/local/etc/snort", "/opt/homebrew/etc/snort", "/etc/snor
 MAX_RECHECKS = 20
 RECHECK_UNAVAILABLE_AFTER_S = 30  # a missing Snort is looked for again after this long (e.g. once the image is pulled)
 PROFILE_READ_BYTES = 32 * 1024**2
-CAVEAT = ("Snort 3.10 does not run service inspectors on TCP data its peer never ACKed, so rules on service "
-          "buffers (http_uri and similar) can miss on these flows while raw-packet rules still fire.")
+CAVEAT = (
+    "Snort 3.10 does not run service inspectors on TCP data its peer never ACKed, so rules on service "
+    "buffers (http_uri and similar) can miss on these flows while raw-packet rules still fire."
+)
 
 
 def _sha(data: bytes) -> str:
@@ -53,8 +56,13 @@ class SnortEngine:
         if not exe:
             return None
         try:
-            r = subprocess.run([exe, "-V"], capture_output=True, text=True, timeout=20,
-                               env={"PATH": "/usr/local/bin:/usr/bin:/bin", "LC_ALL": "C"})
+            r = subprocess.run(
+                [exe, "-V"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                env={"PATH": "/usr/local/bin:/usr/bin:/bin", "LC_ALL": "C"},
+            )
         except (OSError, subprocess.TimeoutExpired):
             return None
         m = _VERSION.search(r.stdout + r.stderr)
@@ -70,7 +78,9 @@ class SnortEngine:
         if not shutil.which("docker"):
             return None, "docker is not installed"
         try:
-            have = subprocess.run([docker_bin(), "image", "inspect", s.docker_image], capture_output=True, text=True, timeout=30)
+            have = subprocess.run(
+                [docker_bin(), "image", "inspect", s.docker_image], capture_output=True, text=True, timeout=30
+            )
         except (OSError, subprocess.TimeoutExpired):
             return None, "docker did not respond within 30 seconds"
         if have.returncode:
@@ -85,9 +95,26 @@ class SnortEngine:
         # Probe the way real runs execute (host uid, read-only, no capabilities), so a permission problem shows up here.
         user = [] if os.getuid() == 0 else ["--user", f"{os.getuid()}:{os.getgid()}"]
         try:
-            r = subprocess.run([docker_bin(), "run", "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL", *user,
-                                "--entrypoint", s.docker_binary, self._image, "-V"],
-                               capture_output=True, text=True, timeout=60)
+            r = subprocess.run(
+                [
+                    docker_bin(),
+                    "run",
+                    "--rm",
+                    "--network",
+                    "none",
+                    "--read-only",
+                    "--cap-drop",
+                    "ALL",
+                    *user,
+                    "--entrypoint",
+                    s.docker_binary,
+                    self._image,
+                    "-V",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
         except (OSError, subprocess.TimeoutExpired):
             return None, "docker did not respond within 60 seconds"
         m = _VERSION.search(r.stdout + r.stderr)
@@ -99,7 +126,9 @@ class SnortEngine:
     def version(self) -> EngineVersion:
         """Detected once and cached. A failed detection is retried after RECHECK_UNAVAILABLE_AFTER_S, so pulling the
         image or installing Snort does not require restarting the server."""
-        if self._version and (self._version.available or time.monotonic() - self._checked < RECHECK_UNAVAILABLE_AFTER_S):
+        if self._version and (
+            self._version.available or time.monotonic() - self._checked < RECHECK_UNAVAILABLE_AFTER_S
+        ):
             return self._version
         self._version, self._checked = self._probe(), time.monotonic()
         return self._version
@@ -143,15 +172,28 @@ class SnortEngine:
     def make_context(self, run_dir: Path, run_id: str, case_id: str) -> RunContext:
         backend = self._require()
         name = re.sub(r"[^a-zA-Z0-9_.-]", "-", f"dw-{case_id}-{run_id}")[:100]
-        return RunContext(run_dir=run_dir, backend=backend, cfg=self.cfg, etc_dir=self._etc_dir(backend), name=name,
-                          image=(self._image or "") if backend == "docker" else "")
+        return RunContext(
+            run_dir=run_dir,
+            backend=backend,
+            cfg=self.cfg,
+            etc_dir=self._etc_dir(backend),
+            name=name,
+            image=(self._image or "") if backend == "docker" else "",
+        )
 
     def status(self) -> dict:
         v = self.version()
-        out = {"engine": "snort", "available": v.available, "version": v.version, "backend": v.backend,
-               "configured_backend": self.cfg.snort.backend, "detail": v.detail,
-               "docker_image": self.cfg.snort.docker_image, "docker_run_image": self._image,
-               "snort2lua": self.has_snort2lua()}
+        out = {
+            "engine": "snort",
+            "available": v.available,
+            "version": v.version,
+            "backend": v.backend,
+            "configured_backend": self.cfg.snort.backend,
+            "detail": v.detail,
+            "docker_image": self.cfg.snort.docker_image,
+            "docker_run_image": self._image,
+            "snort2lua": self.has_snort2lua(),
+        }
         if v.available:
             try:
                 out["config_dir"] = self._etc_dir(v.backend)
@@ -204,9 +246,13 @@ class SnortEngine:
         cfg_text = generate_config(etc_dir=ctx.etc_dir, alert_file=False)
         self._write_inputs(ctx, rules_text, "rules.rules", "validate.lua", cfg_text)
         raw, argv = self._validate_once(ctx, "rules.rules", "")
-        base = EngineResult(status="ok", argv=argv, raw=raw,
-                            rules={"source": "validate", "sha256": _sha(rules_text.encode()), "path": "cfg/rules.rules"},
-                            config={"sha256": _sha(cfg_text.encode()), "path": "cfg/validate.lua", "options": {}})
+        base = EngineResult(
+            status="ok",
+            argv=argv,
+            raw=raw,
+            rules={"source": "validate", "sha256": _sha(rules_text.encode()), "path": "cfg/rules.rules"},
+            config={"sha256": _sha(cfg_text.encode()), "path": "cfg/validate.lua", "options": {}},
+        )
         if raw.timed_out:
             base.status, base.error_excerpt = "timeout", "validation timed out"
             return base
@@ -221,12 +267,17 @@ class SnortEngine:
         if raw.exit_code not in (0, 1) and not rep.errors:
             base.status = "error"
             base.error_excerpt = self._fail_excerpt(raw)
-        errors = sorted(rep.errors, key=lambda e: (e["line"] or 0))
+        errors = sorted(rep.errors, key=lambda e: e["line"] or 0)
         lint_errors = [d for d in lint if d["severity"] == "error"]
         ok = rep.ok and not lint_errors if raw.exit_code in (0, 1) else False
         base.payload = {
-            "ok": ok, "snort_ok": rep.ok, "errors": errors, "warnings": rep.warnings,
-            "lint": lint, "rechecked_individually": rechecked, "recheck_incomplete": incomplete,
+            "ok": ok,
+            "snort_ok": rep.ok,
+            "errors": errors,
+            "warnings": rep.warnings,
+            "lint": lint,
+            "rechecked_individually": rechecked,
+            "recheck_incomplete": incomplete,
             "rules_checked": len(parse_rules(rules_text)),
         }
         base.totals = {"errors": len(errors) + len(lint_errors), "warnings": len(rep.warnings)}
@@ -252,14 +303,20 @@ class SnortEngine:
             text = read_capped(raw.stdout) + "\n" + read_capped(raw.stderr)
             one = parse_validation(text, raw.exit_code or 0, by_line[line].text, "single.rules")
             for e in one.errors:
-                new_errors.append({**e, "line": line, "rule": by_line[line].text[:300], "sid": e["sid"] or by_line[line].sid})
+                new_errors.append(
+                    {**e, "line": line, "rule": by_line[line].text[:300], "sid": e["sid"] or by_line[line].sid}
+                )
             for w in one.warnings:
                 new_warnings.append({**w, "line": line, "sid": w["sid"] or by_line[line].sid})
         done_set = set(done)
         keep_e = [e for e in rep.errors if e["line"] not in done_set]
         keep_w = [w for w in rep.warnings if w["line"] not in done_set]
-        out = ValidationReport(ok=not (keep_e or new_errors), errors=keep_e + new_errors,
-                               warnings=keep_w + new_warnings, summary_warnings=rep.summary_warnings)
+        out = ValidationReport(
+            ok=not (keep_e or new_errors),
+            errors=keep_e + new_errors,
+            warnings=keep_w + new_warnings,
+            summary_warnings=rep.summary_warnings,
+        )
         return out, done, extra, len(done) < len(todo)
 
     # ---- snort2lua ---------------------------------------------------------------------
@@ -271,8 +328,17 @@ class SnortEngine:
         Convert each rules file you want separately."""
         if not self.has_snort2lua():
             raise RuntimeError("snort2lua is not available with this Snort install")
-        args = ["-i", "-c", ctx.input_arg(source), "-r", ctx.out_arg("converted.rules"),
-                "-o", ctx.out_arg("converted.lua"), "-e", ctx.out_arg("convert_errors.txt")]
+        args = [
+            "-i",
+            "-c",
+            ctx.input_arg(source),
+            "-r",
+            ctx.out_arg("converted.rules"),
+            "-o",
+            ctx.out_arg("converted.lua"),
+            "-e",
+            ctx.out_arg("convert_errors.txt"),
+        ]
         if ctx.backend == "native":
             exe = shutil.which("snort2lua") or str(Path(shutil.which(self.cfg.snort.binary)).parent / "snort2lua")
             argv = [exe] + args
@@ -296,22 +362,51 @@ class SnortEngine:
         lim = self.cfg.limits
         if len(rules_text.encode()) > lim.max_rules_bytes:
             raise ValueError("rule set is larger than the configured max_rules_bytes")
-        opts = {"home_net": options.get("home_net"), "external_net": options.get("external_net"),
-                "flush_one_sided": bool(options.get("flush_one_sided")), "profile": bool(options.get("profile")),
-                "filters": options.get("filters") or []}
-        cfg_text = generate_config(etc_dir=ctx.etc_dir, home_net=opts["home_net"], external_net=opts["external_net"],
-                                   alert_limit_mb=lim.alert_json_limit_mb, profile=opts["profile"],
-                                   flush_one_sided=opts["flush_one_sided"], filters=opts["filters"])
+        opts = {
+            "home_net": options.get("home_net"),
+            "external_net": options.get("external_net"),
+            "flush_one_sided": bool(options.get("flush_one_sided")),
+            "profile": bool(options.get("profile")),
+            "filters": options.get("filters") or [],
+        }
+        cfg_text = generate_config(
+            etc_dir=ctx.etc_dir,
+            home_net=opts["home_net"],
+            external_net=opts["external_net"],
+            alert_limit_mb=lim.alert_json_limit_mb,
+            profile=opts["profile"],
+            flush_one_sided=opts["flush_one_sided"],
+            filters=opts["filters"],
+        )
         self._write_inputs(ctx, rules_text, "rules.rules", "snort.lua", cfg_text)
-        args = ["-q", "-c", ctx.cfg_arg("snort.lua"), "-R", ctx.cfg_arg("rules.rules"),
-                "-r", ctx.input_arg(pcap), "--daq", "pcap", "--daq-mode", "read-file",
-                "-A", "alert_json", "-l", ctx.out_arg(), "-z", "1"]
+        args = [
+            "-q",
+            "-c",
+            ctx.cfg_arg("snort.lua"),
+            "-R",
+            ctx.cfg_arg("rules.rules"),
+            "-r",
+            ctx.input_arg(pcap),
+            "--daq",
+            "pcap",
+            "--daq-mode",
+            "read-file",
+            "-A",
+            "alert_json",
+            "-l",
+            ctx.out_arg(),
+            "-z",
+            "1",
+        ]
         argv = self._command(ctx, args)
         raw = execute(argv, ctx, lim.timeout_s)
         res = EngineResult(
-            status="ok", argv=argv, raw=raw,
+            status="ok",
+            argv=argv,
+            raw=raw,
             rules={"source": "run", "sha256": _sha(rules_text.encode()), "path": "cfg/rules.rules"},
-            config={"sha256": _sha(cfg_text.encode()), "path": "cfg/snort.lua", "options": opts})
+            config={"sha256": _sha(cfg_text.encode()), "path": "cfg/snort.lua", "options": opts},
+        )
         if raw.timed_out:
             res.status, res.error_excerpt = "timeout", f"timed out after {lim.timeout_s}s"
             return res
@@ -331,8 +426,11 @@ class SnortEngine:
             res.results["profile"] = "results/profile.json"
             summary["profile_rows"] = len(prof["rules"])
         (results / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
-        res.totals = {"alerts": summary["total"], "truncated": summary["truncated"],
-                      "by_sid_top": [{"sid": r["sid"], "count": r["count"]} for r in summary["by_sid"][:10]]}
+        res.totals = {
+            "alerts": summary["total"],
+            "truncated": summary["truncated"],
+            "by_sid_top": [{"sid": r["sid"], "count": r["count"]} for r in summary["by_sid"][:10]],
+        }
         res.payload = summary
         return res
 
