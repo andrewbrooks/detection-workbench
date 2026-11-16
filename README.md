@@ -10,6 +10,45 @@ It works only on files on disk. It never sniffs an interface, runs inline, or to
 A long-form write-up with a worked example, use cases and example output is in [docs/writeup.md](docs/writeup.md).
 A complete example case directory, with every file explained, is in [docs/examples/](docs/examples/README.md).
 
+## What it looks like
+
+```mermaid
+flowchart LR
+    client["MCP client and its model"] -->|tool calls| wb["Detection Workbench"]
+    wb -->|"registered files, read-only"| snort["Snort 3<br/>(Docker: no network, read-only, all capabilities dropped)"]
+    snort -->|alert output| wb
+    wb --> case["Case file on disk"]
+    case --> out["Markdown report, Timesketch CSV, tuned rules"]
+```
+
+Below is a real session, not a mock-up: the [example case](docs/examples/README.md) was produced by the workbench's own tools
+on a synthetic capture. The tools were called in this order: `register_evidence`, `pcap_summary`, `validate_rules`,
+`run_pcap`, `test_tuning` (an `event_filter` limit), `test_tuning` (the same fix written into the rule), `update_decision`
+(config option rejected, rule edit accepted), `export_tuning` and `export_case`.
+
+The noisy SYN rule (sid 1000003) fired 6 times from one scanner. The accepted fix, with the Snort runs before and after:
+
+| sid | before | after | change |
+|---|---|---|---|
+| 1000001 | 1 | 1 | no change |
+| 1000002 | 2 | 2 | no change |
+| 1000003 | 6 | 1 | −83% |
+
+```diff
+  alert tcp any any -> any any
+  msg:"WBTEST any SYN"
+  flags:S
++ detection_filter:track by_src,count 5,seconds 60
+  sid:1000003
+- rev:1
++ rev:2
+```
+
+The marker rule (sid 1000001) and the DNS rule (sid 1000002) are unchanged on this capture, so the fix did not cost
+you those detections. This excerpt is copied from the exported report, [read the whole report](docs/examples/case/example-marker-rule-and-syn-scan-noise/exports/example-marker-rule-and-syn-scan-noise-markdown.md)
+(summary, findings, per-run alert tables, both candidate fixes, caveats and a timeline). It is one 13-packet synthetic
+capture, so it shows the change works mechanically, not that the limit suits production traffic.
+
 ## Install
 
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/). It runs on Linux and macOS (Windows through WSL2) and has been developed
